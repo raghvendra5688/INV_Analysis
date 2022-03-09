@@ -1,0 +1,61 @@
+Study,Cohort,Cancer
+GSE91061,Melanoma,SKCM
+PRJEB23709,Melanoma,SKCM
+GSE78220,Melanoma,SKCM
+GSE35640,Melanoma,SKCM
+phs000452.v2.p1,Melanoma,SKCM
+GSE126044,Lung Cancer,LUAD
+GSE108474,Glioma,GBM
+GSE84437,Gastric Cancer,NA
+GSE32894,Bladder Cancer,BLCA
+GSE14520,Hepatocelluler Cancer,LIHC
+GSE17538,Colon Adenocarcinoma,COAD
+GSE65904,Melanoma,SKCM
+GSE26712,Ovarian Cancer,OV
+GSE31210,Lung Adenocarcinoma,LUAD
+GSE39582,Colon Adenocarcinoma,COAD
+GSE72094,Lung Adenocarcinoma,LUAD
+GSE9891,Ovarian Cancer,OV
+GSE30219,Lung Cancer,LUAD
+GSE65858,Head and Neck Cancer,HNSC
+GSE13507,Bladder Cancer,BLCA
+GSE3494,Breast Cancer,BRCA
+GSE7390,Breast Cancer,BRCA
+GSE13041,Glioma,GBM
+GSE24450,Breast Cancer,BRCA
+GSE1456,Breast Cancer,BRCA
+GSE19188,Lung Cancer,LUAD
+GSE3149,Ovarian Cancer,OV
+GSE8894,Lung Cancer,LUAD
+GSE14814,Lung Cancer,LUAD
+GSE4573,Lung Cancer,LUAD
+GSE16446,Breast Cancer,BRCA
+GSE3141,Lung Cancer,LUAD
+GSE4271,Glioma,GBM
+GSE20486,Breast Cancer,BRCA
+GSE31056,Head and Neck cancer,HNSC
+GSE24550,Colon Adenocarcinoma,COAD
+GSE4412,Glioma,GBM
+GSE7696,Glioma,GBM
+GSE8401,Melanoma,SKCM
+GSE24549,Colon Adenocarcinoma,COAD
+GSE14764,Ovarian Cancer,OV
+GSE18521,Ovarian Cancer,OV
+GSE16581,Meningioma,NA
+GSE1993,Astrocytoma,NA
+GSE10927,Adrenocortical Carcinoma,ACC
+GSE12945,Colon Adenocarcinoma,COAD
+GSE10245,Lung Cancer,LUAD
+GSE22155,Colon Adenocarcinoma,COAD
+GSE29013,Lung Cancer,LUAD
+GSE17618,Sarcoma,SARC
+GSE21257,Sarcoma,SARC
+GSE31547,Lung Cancer,LUAD
+GSE22541,Colon Adenocarcinoma,COAD
+GSE19234,Melanoma,SKCM
+GSE3292,Head and Neck cancer,HNSC
+GSE16091,Sarcoma,SARC
+GSE8167,Gastrointestinal Stromal Tumor,NA
+GSE5287,Bladder Cancer,BLCA
+GSE19829,Ovarian Cancer,OV
+GSE6253,Lung Cancer,LUAD
