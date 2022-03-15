@@ -27,7 +27,11 @@ required.packages = c("RCurl","httr", "rjson", "stringr", "HGNChelper","ggplot2"
 required.bioconductor.packages = c("clue","ConsensusClusterPlus","survivalAnalysis","dplyr")
 ipak(required.packages)
 ibiopak(required.bioconductor.packages)
+library(gplots)
 
+
+#Load latest version of heatmap.3 function
+source_url("https://raw.githubusercontent.com/obigriffith/biostar-tutorials/master/Heatmaps/heatmap.3.R")
 
 # Set Parameters
 Cancers = c("ACC","BLCA","BRCA","CESC","CHOL","COAD","DLBC","ESCA",
@@ -37,7 +41,7 @@ Cancers = c("ACC","BLCA","BRCA","CESC","CHOL","COAD","DLBC","ESCA",
 
 # Load INV genes data
 load("Data/Others/INV_genes.RData") 
-
+Cancers <- "BLCA"
 for (Cancer in Cancers)
 {
   #Load RNA-Seq data
@@ -104,6 +108,43 @@ for (Cancer in Cancers)
   save(table_cluster_assignment,optimal.calinsky, file = outputname)
   table_cluster_assignment <- manual_annotation(outputname,Cancer)
   save(table_cluster_assignment,optimal.calinsky, file = outputname)
+  
+  #Make Heatmap highlighting the GSVA score for Invasiveness High vs Invasiveness Low vs Invasiveness Medium
+  ##############################################################################
+  temp_matrix <- scale(INV_subset_RNAseq_log2, center=T, scale=T)
+  rev_INV_subset_RNAseq_log2 <- t(temp_matrix)
+  inv_high_samples <- which(table_cluster_assignment$HML_cluster=="INV High")
+  inv_low_samples <- which(table_cluster_assignment$HML_cluster=="INV Low")
+  colcol <- matrix(0,nrow=ncol(rev_INV_subset_RNAseq_log2),ncol=1)
+  colnames(colcol) <- "INV Pheno"
+  
+  #See if there are 2 or more clusters and prepare the heatmap accordingly
+  ##############################################################################
+  if (optimal.calinsky>2)
+  {
+    inv_medium_samples <- which(table_cluster_assignment$HML_cluster=="INV Medium")
+    hc_high.cols <- hclust(dist(t(rev_INV_subset_RNAseq_log2[,inv_high_samples])),method='ward.D2')
+    hc_low.cols <- hclust(dist(t(rev_INV_subset_RNAseq_log2[,inv_low_samples])),method='ward.D2')
+    hc_medium.cols <- hclust(dist(t(rev_INV_subset_RNAseq_log2[,inv_medium_samples])),method='ward.D2')
+    hc.cols <- c(hc_low.cols$order,length(inv_low_samples)+hc_medium.cols$order, length(inv_low_samples)+length(inv_medium_samples)+hc_high.cols$order);
+    rev_INV_subset_RNAseq_log2 <- rev_INV_subset_RNAseq_log2[,c(inv_low_samples,inv_medium_samples, inv_high_samples)]
+    colcol[hc_low.cols$order,1] <- "blue"
+    colcol[length(hc_low.cols$order)+hc_medium.cols$order] <- "yellow"
+    colcol[length(hc_low.cols$order)+length(hc_medium.cols$order)+hc_high.cols$order,1] <- "red"
+  }
+  hc.rows <- hclust(dist(rev_INV_subset_RNAseq_log2),method='ward.D2')
+  
+  #Save the Heatmap for each cancer 
+  #############################################################################
+  pdf(paste0("Results/",Cancer,"/",Cancer,"_Invasivenss_Expression.pdf"),height=4,width=4, pointsize=11, fonts = "sans")
+  par(bg="white")
+  par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=1.0)
+  heatmap.3(rev_INV_subset_RNAseq_log2[hc.rows$order,hc.cols], Rowv = NULL, Colv = NULL, col = bluered(110), scale="none", 
+            main= paste0("Invasiveness Genes Expression for ",Cancer),
+            xlab = "TCGA Samples", ylab = "", labRow = rownames(rev_INV_subset_RNAseq_log2)[hc.rows$order], labCol = FALSE, dendrogram = "none",
+            key = TRUE, density.info = "none", KeyValueName = "Expression Value", ColSideColors = colcol, ColSideColorsSize=2, cexCol=2, 
+            margins = c(5,5), useRaster = TRUE)
+  dev.off()
   
 }
 
@@ -278,8 +319,8 @@ output_df %>%
              graph.pos = 6,
              boxsize = 0.25,
              xlog = TRUE,
-             graphwidth = unit(2,"cm"),
-             colgap = unit(2,"mm"),
+             graphwidth = unit(4,"cm"),
+             colgap = unit(10,"mm"),
              #col = fpColors(box = "blue",line = "blue"),
              lwd.xaxis=1,
              hrzl_lines = list("2" = gpar(lty = 2), 
@@ -288,7 +329,7 @@ output_df %>%
              txt_gp = fpTxtGp(ticks=gpar(fontfamily="sans",fontsize=20),
                               label=gpar(fontfamily="sans", fontsize=10),
                               title=gpar(fontfamily="sans", fontsize=10, fontface="bold"))) -> p_full
-pdf("Results/PanCancer/All_Cancers_of_Interest_Invasivenss_Forest_Plot_Supp.pdf", width = 6, height=8, pointsize = 11)
+pdf("Results/PanCancer/All_Cancers_of_Interest_Invasivenss_Forest_Plot_Supp.pdf", width = 8, height=8, pointsize = 11)
 p_full
 dev.off()
 
@@ -315,21 +356,6 @@ names(diff_mean_low_high) <- Cancers
 diff_mean_low_high <- sort(diff_mean_low_high, decreasing = F)
 boxplot_df$Cancer <- factor(boxplot_df$Cancer, levels = names(diff_mean_low_high))
 
-#subset_boxplot_df <- boxplot_df[boxplot_df$Cancer %in% c("LGG","KIRC","SKCM","STAD","COAD"),]
-#subset_boxplot_df$Cancer <- factor(subset_boxplot_df$Cancer, levels=c("LGG","KIRC","SKCM","STAD","COAD"))
-
-#g_boxplot <- ggplot(data=subset_boxplot_df, aes(x=Cancer, y=PANoptosis_Score, fill=PANoptosis_Category))+
-#  geom_boxplot(position=position_dodge(1)) + scale_fill_manual(name="", values=c("blue","yellow","red"))+
-#  theme_bw() + xlab("Cancers") + ylab("PANoptosis Score")+ylim(c(-1,1))+
-#  theme(plot.background=element_rect(fill = "white"),
-#        panel.background = element_rect(fill = 'white'),legend.background = element_rect(fill = "white", color = NA),
-#        legend.key = element_rect(color = "gray", fill = "white"), legend.title = element_text(color = "black"), legend.text = element_text(size=11, family="Arial", color = "black"),
-#        axis.text.x = element_text(size=11, angle=90, hjust = 0.5, vjust=0.5, family="Arial"),
-#        axis.text.y = element_text(size=11, family="Arial"),
-#        axis.title.x = element_text(size=11, family="Arial"),
-#        axis.title.y = element_text(size=11, family="Arial"))
-#ggsave(filename = "Results/PanCancer/Sub_Cancers_of_Interest_Boxplot_PANoptosis_Score.pdf", plot = g_boxplot, device = pdf(fonts="Arial"), width = 5, height=3, units="in", dpi=450)
-#dev.off()
 
 g_boxplot <- ggplot(data=boxplot_df, aes(x=Cancer, y=INVscore, fill=INV_Category))+
   geom_boxplot(position=position_dodge(1)) + scale_fill_manual(name="", values=c("blue","yellow","red"))+
