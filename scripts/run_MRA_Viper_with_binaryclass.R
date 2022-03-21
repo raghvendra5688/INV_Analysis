@@ -24,7 +24,7 @@ load('../Data/Others/me_net_full.Rdata')
 
 #Load the RNASeq data
 #=======================================================================================
-filename <- "COAD"
+filename <- "MESO"
 outputpath <- paste0("../Results/",filename)
 sample_name <- paste0(filename,"_Full_");
 out <- loading_data(filename,M)
@@ -77,10 +77,10 @@ medium_indices <- setdiff(setdiff(c(1:dim(D)[2]),high_indices),low_indices)
 D_high <- D[,high_indices]
 D_low <- D[,low_indices]
 D_medium <- D[,medium_indices]
-vpsig_high <- viperSignature(D_high,D_medium,method="zscore",per=1000,seed=123,cores=48,verbose=TRUE)
-vpres_high <- viper(vpsig_high, viper_regulons, minsize=10, cores=10, bootstraps = 1000, verbose = TRUE)
-#vpsig_low <- viperSignature(D_low,D_medium,method="zscore",per=1000,seed=123,cores=48,verbose=TRUE)
-#vpres_low <- viper(vpsig_low, viper_regulons, minsize=10, cores=10, verbose = TRUE)
+vpsig_high <- viperSignature(D_high,D_medium,method="zscore",per=1000,seed=123,cores=20,verbose=TRUE)
+vpres_high <- viper(vpsig_high, viper_regulons, minsize=10, cores=20, bootstraps = 1000, verbose = TRUE)
+vpsig_low <- viperSignature(D_low,D_medium,method="zscore",per=1000,seed=123,cores=20,verbose=TRUE)
+vpres_low <- viper(vpsig_low, viper_regulons, minsize=10, cores=20, verbose = TRUE)
 
 vpres_all <- as.matrix(cbind(vpres_high,vpres_low))
 
@@ -103,7 +103,7 @@ colnames(new_mr_activity_matrix) <- NULL
 colcol <- rep("white",ncol(new_mr_activity_matrix));
 high_ids <- c(1:length(high_indices));
 low_ids <- c((length(high_indices)+1):length(colcol))
-colcol[high_ids] <- "yellow"
+colcol[high_ids] <- "red"
 colcol[low_ids] <- "blue"
 hc_high.cols <- hclust(dist(t(new_mr_activity_matrix[,high_ids])),method='ward.D')
 hc_low.cols <- hclust(dist(t(new_mr_activity_matrix[,low_ids])),method='ward.D')

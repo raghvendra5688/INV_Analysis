@@ -21,7 +21,7 @@ load('../Data/Others/me_net_full.Rdata')
 
 #Load the RNASeq data
 #=======================================================================================
-filename <- "THCA"
+filename <- "MESO"
 outputpath <- paste0("../Results/",filename)
 sample_name <- paste0(filename,"_Full_");
 out <- loading_data(filename,M)
@@ -63,7 +63,7 @@ D <- high_low_output[[4]]
 #Perform gene set enrichment
 #========================================================================================
 gsvaout <- gsva(D, regulon_sets, verbose=FALSE, min.sz=10, max.sz = max(unlist(lapply(regulon_sets,length))), 
-                mx.diff=TRUE, parallel.sz=48)
+                mx.diff=TRUE, parallel.sz=20)
 
 gsvaout_inv_related <- gsvaout[,c(high_indices,low_indices)]
 
@@ -89,7 +89,7 @@ colnames(new_mr_activity_matrix) <- NULL
 colcol <- rep("white",ncol(new_mr_activity_matrix));
 high_ids <- c(1:length(high_indices));
 low_ids <- c((length(high_indices)+1):length(colcol))
-colcol[high_ids] <- "yellow"
+colcol[high_ids] <- "red"
 colcol[low_ids] <- "blue"
 hc_high.cols <- hclust(dist(t(new_mr_activity_matrix[,high_ids])),method='ward.D')
 hc_low.cols <- hclust(dist(t(new_mr_activity_matrix[,low_ids])),method='ward.D')

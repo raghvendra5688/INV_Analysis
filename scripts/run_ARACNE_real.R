@@ -2,7 +2,7 @@ library(corto)
 library(doMC)
 library(foreach)
 library(igraph)
-registerDoMC(48)
+registerDoMC(20)
 
 setwd('../scripts/')
 source('get_functions.R')
@@ -13,7 +13,7 @@ load('../Data/Others/me_net_full.Rdata')
 
 #Do the GRN construction and saving
 #========================================================================================
-filename <- "DLBC"
+filename <- "MESO"
 outputpath <- paste0("../Results/ARACNE/",filename)
 sample_name <- paste0(filename,"_Full_");
 out <- loading_data(filename,M)
@@ -21,7 +21,7 @@ D <- t(log2(out[[1]]+1))
 tfs <- rownames(M)
 
 #Get network using ARACNE-AP algorithm with number of bootstraps to 1000 and perform DPI too
-net <- corto(D, tfs, nbootstraps = 100, nthreads = 48, p=1e-05, verbose=TRUE)
+net <- corto(D, tfs, nbootstraps = 100, nthreads = 20, p=1e-3, verbose=TRUE)
 
 V_final <- matrix(0,nrow=length(net),ncol=nrow(D))
 rownames(V_final) <- names(net)
