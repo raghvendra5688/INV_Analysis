@@ -20,256 +20,201 @@ library(dplyr)
 library(jpeg)
 library(png)
 library(grid)
-library(plyr)
-library(RColorBrewer)
-library(ggsignif)
-library(ggpubr)
+library(gridExtra)
 library(grImport2)
-library(matrixStats)
-warnings("off")
+library(ggpubr)
+library(GEOquery)
 
+#Load latest version of heatmap.3 function
 source_url("https://raw.githubusercontent.com/obigriffith/biostar-tutorials/master/Heatmaps/heatmap.3.R")
 
 registerDoMC(20)
 
-setwd('../scripts/')
+setwd('./scripts/')
 
 source('gene-reverse-network.R')
 source('get_functions.R')
 
-INV_enabled <- c("BLCA","COAD","LGG","OV","PRAD","PAAD","STAD","LUAD","LUSC","ESCA")
-INV_disabled <- c("HNSC","DLBC","LIHC","THCA")
+#Load mechanistic network
+#======================================================================================
+load(gzfile(description = '../Data/Others/me_net_full.Rdata.gz'))
 
-all_inv <- c(INV_enabled,INV_disabled)
+#Load the RNASeq data for BLCA
+#=======================================================================================
+filename <- "BLCA"
+outputpath <- paste0("../Results/",filename)
+sample_name <- paste0(filename,"_Full_");
+out <- loading_data(filename,M)
+D <- as.matrix(log2(t(out[[1]])+1))
 
-#Make a set of density plot for the activity matrices of the 12 cancers of interest
-#####################################################################################################
-outputpath <- paste0("../Results/",all_inv[1]);
-sample_name <- paste0(all_inv[1],"_Full_")
-filename <- all_inv[1]
-cols <- brewer.pal(12, "Paired")
-line_types <- c(1,2,3,4,5,6,1,2,3,4,5,6,1,2)
-
-#Load the activity matrix for BLCA
-pdf("../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_2_Normality_of_Activities.pdf",pointsize = 15, height=8, width=12)
-load(paste0(outputpath,"/Adjacency_Matrix/",sample_name,"Activity_matrix_FGSEA.Rdata"))
-plot(density(amat),xlab="Activity Values",ylab="Density",col=cols[1],type="l",lty=line_types[1],lwd=2,
-     ylim=c(0,1),main="Activities of Transcriptional Regulators follows normal distribution", cex=2.0)
-for (k in 2:length(all_inv))
-{
-  outputpath <- paste0("../Results/",all_inv[k]);
-  sample_name <- paste0(all_inv[k],"_Full_")
-  filename <- all_inv[k]
-  #Load the activity matrix
-  load(paste0(outputpath,"/Adjacency_Matrix/",sample_name,"Activity_matrix_FGSEA.Rdata"))
-  lines(density(amat),xlab="Activity Values",ylab="Density",col=cols[mod(k,12)+1],type="l",lty=line_types[k],lwd=2, cex=2.0)
-}
-legend("topright", legend=all_inv,col=cols, lty=line_types, cex=0.8)
+#Filter to get the samples with the INV phenotype information
+#======================================================================================
+load(paste0("../Data/",filename,"/",filename,"_INV_cluster_assignment_k2-6_v2.Rdata"))
+tcga_sample_ids <- rownames(table_cluster_assignment)
+unmatched_tcga_sample_ids <- colnames(D);
+filter_samples <- which(unmatched_tcga_sample_ids %in% tcga_sample_ids);
+D <- D[,filter_samples];
+jpeg(filename="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_2.jpeg",width=900, height=480, units="px", pointsize=11)
+boxplot(D[,1:100],ylab="Quantile-Normalized Counts",main="Quantile-Normalized Primary Tumor Samples")
 dev.off()
 
-#Function to get common master regulators
-################################################################################
-get_common_mrs <- function(filename)
+order_indices <- NULL
+for (i in 1:length(unmatched_tcga_sample_ids))
 {
-  load(paste0("../Results/",filename,"/Adjacency_Matrix/",filename,"_Full_All_Diff_MR_Info_GSVA_BC_NES_1.Rdata"))
-  rgbm_gsva_genes <- rownames(DEgeneSets)
-  if (file.exists(paste0("../Results/",filename,"/Adjacency_Matrix/",filename,"_Full_All_Diff_MR_Info_Viper_BC_NES_1.Rdata")))
-  {
-    load(paste0("../Results/",filename,"/Adjacency_Matrix/",filename,"_Full_All_Diff_MR_Info_Viper_BC_NES_1.Rdata"))
-    rgbm_viper_genes <- rownames(DEgeneSets)
-  }
-  else{
-    rgbm_viper_genes <- rgbm_gsva_genes
-  }
-  if (file.exists(paste0("../Results/ARACNE/",filename,"/Adjacency_Matrix/",filename,"_All_Diff_MR_Info_ARACNE_Viper_BC_NES_1.Rdata")))
-  {
-    load(paste0("../Results/ARACNE/",filename,"/Adjacency_Matrix/",filename,"_All_Diff_MR_Info_ARACNE_Viper_BC_NES_1.Rdata"))
-    aracne_viper_genes <- rownames(DEgeneSets)
-  }
-  else{
-    aracne_viper_genes <- rgbm_gsva_genes
-  }
-  load(paste0("../Results/",filename,"/Adjacency_Matrix/",filename,"_Full_TopMR_Info_FGSEA_BC_NES_1.Rdata"))
-  rgbm_gsea_genes <- topmr_info$pathway
-  
-  common_mrs <- intersect(intersect(intersect(rgbm_gsea_genes,rgbm_viper_genes),aracne_viper_genes),rgbm_gsva_genes)
-  save(common_mrs,file=paste0("../Results/",filename,"/Combined/",filename,"_Common_TopMRs.Rdata"))
-  return(common_mrs)
+  order_indices <- c(order_indices,which(tcga_sample_ids==unmatched_tcga_sample_ids[i]));
 }
+table_cluster_assignment <- table_cluster_assignment[order_indices,];
+high_indices <- which(table_cluster_assignment$HML_cluster=="INV High")
+low_indices <- which(table_cluster_assignment$HML_cluster=="INV Low")
+D1 <- D[,c(high_indices,low_indices)]
+x <- apply(D1,1,IQR)
+D2 <- D1[x>quantile(x,0.95),]
 
-#Make the plot of NES of the common MRs which are differentially active
-output_df <- NULL
-for (k in 1:length(all_inv))
+##Perform hierarchical clustering to get clusters on both rows and columns
+hc.cols <- hclust(dist(t(D2)),method="ward.D2")
+hc.rows <- hclust(dist(D2),method="ward.D2")
+
+pdf(paste0("../Results/Paper_Figures/Figure2/RNA_Seq_Figure_2A.pdf"),width=6,height=8,pointsize = 11)
+par(bg="white")
+par(fg="black",col.axis="black",col.main="black",col.lab="white", cex.main=2.0)
+heatmap.3(D2[hc.rows$order,hc.cols$order], Rowv = NULL, Colv = NULL, col = bluered(50), scale="none", main= "RNA-Seq Expression Data",
+          xlab = "TCGA Samples", ylab = "Genes ", labRow = FALSE, labCol = FALSE, dendrogram = "none", cexRow = 6, cexCol = 6,
+          key = TRUE, density.info = "none", KeyValueName = "log2(Normalized Expression)",
+          margins = c(2,2), useRaster = TRUE)
+dev.off()
+
+###################################################################################################################
+
+#Get regulatory network
+#=======================================================================================
+net <- read.table(gzfile(paste0(outputpath,"/Adjacency_Matrix/",sample_name,"Final_Adjacency_Matrix.csv.gz")),header=TRUE,sep=" ")
+
+#Get the gene names and associate it with appropriate variables
+#====================================================================================
+load("../Data/Others/TF_Target_Info.Rdata")
+tfs <- tf_gene_names;
+targets <- target_gene_names;
+rownames(net) <- tfs;
+colnames(net) <- targets
+
+#Get the network from cancer immunophenotype analysis
+###################################################################################################################
+#Load the TF-target signed regulon
+#===================================================================================
+#Get from cancer immunophenotype analysis
+
+#######################################################################################################################
+#Load the activity matrix for all TFs with regulon size >= 10
+#==================================================================================
+load(paste0(outputpath,"/Adjacency_Matrix/",sample_name,"Activity_matrix_FGSEA.Rdata"))
+amat.pheno <- amat[,c(high_indices,low_indices)]
+hc.cols <- hclust(dist(t(amat.pheno)),method="ward.D2")
+hc.rows <- hclust(dist(amat.pheno),method="ward.D2")
+
+min_activity <- min(amat.pheno)
+max_activity <- max(amat.pheno)
+for (i in 1:ncol(amat.pheno))
 {
-  #Perform analysis for common MRs obtained from RGBM + FGSEA, RGBM + GSVA, RGBM + Viper, ARACNE + Viper
-  #======================================================================================
-  outputpath <- paste0("../Results/",all_inv[k]);
-  sample_name <- paste0(all_inv[k],"_Full_")
-  filename <- all_inv[k]
-  
-  #Load mechanistic network
-  #======================================================================================
-  load('../Data/Others/me_net_full.Rdata')
-  
-  #Load the gene expression matrix
-  out <- loading_data(filename,M)
-  D <- as.matrix(log2(t(out[[1]])+1))
-  
-  #Load the common MRs
-  common_mrs <- get_common_mrs(filename)
-  
-  #Load NES information about all MRs identified by RGBM + FGSEA and intersect with common MRs
-  load(paste0("../Results/",filename,"/Adjacency_Matrix/",filename,"_Full_TopMR_Info_FGSEA_BC_NES_1.Rdata"))
-  common_mr_info <- topmr_info[topmr_info$pathway %in% common_mrs,]
-  common_mr_info$Cancer <- rep(filename,nrow(common_mr_info))
-  
-  #Load ICR high and ICR low indices
-  load(paste0("../Data/",filename,"/",filename,"_INV_cluster_assignment_k2-6_v2.Rdata"))
-  high_low_output <- get_high_low_indices(table_cluster_assignment,D)
-  table_cluster_assignment <- high_low_output[[1]]
-  high_indices <- high_low_output[[2]]
-  low_indices <- high_low_output[[3]]
-  D <- high_low_output[[4]]
-  
-  #Load the activity matrix
-  load(paste0(outputpath,"/Adjacency_Matrix/",sample_name,"Activity_matrix_FGSEA.Rdata"))
-  max_amat <- max(amat)
-  min_amat <- min(amat)
-  for (i in 1:nrow(amat))
+  for (j in 1:nrow(amat.pheno))
   {
-    for (j in 1:ncol(amat))
+    if (amat.pheno[j,i]>0)
     {
-      if (amat[i,j]>0) {amat[i,j] <- amat[i,j]/max_amat}
-      else if (amat[i,j]<0) {amat[i,j] <- amat[i,j]/abs(min_amat)}
+      amat.pheno[j,i] <- amat.pheno[j,i]/max_activity
+    } else{
+      amat.pheno[j,i] <- amat.pheno[j,i]/abs(min_activity)
     }
   }
   
-  common_mr_info$median_inv_high <- rowMedians(amat[common_mr_info$pathway,high_indices])
-  common_mr_info$median_inv_low <- rowMedians(amat[common_mr_info$pathway,low_indices])
-  
-  output_df <- rbind(output_df,cbind(common_mr_info$pathway,common_mr_info$padj,common_mr_info$NES,common_mr_info$Cancer,common_mr_info$median_inv_high,common_mr_info$median_inv_low))
 }
-output_df <- as.data.frame(output_df)
-colnames(output_df) <- c("MR","Padj","NES","Cancer","Median_INV_High","Median_INV_Low")
-output_df$MR <- as.character(as.vector(output_df$MR))
-output_df$Padj <- as.numeric(as.vector(output_df$Padj))
-output_df$NES <- as.numeric(as.vector(output_df$NES))
-output_df$Cancer <- as.character(as.vector(output_df$Cancer))
-output_df$Median_INV_High <- as.numeric(as.vector(output_df$Median_INV_High))
-output_df$Median_INV_Low <- as.numeric(as.vector(output_df$Median_INV_Low))
-write.table(output_df,"../Results/Paper_Text/All_TF_Activity_Information_v2.csv",row.names = F, col.names = T, quote=F)
+hc.cols <- hclust(dist(t(amat.pheno)),method="average")
+hc.rows <- hclust(dist(amat.pheno),method="ward.D2")
 
-#Make a volcano plot highlighting the most differential TFs
-#======================================================================================================================
-output_df <- read.table("../Results/Paper_Text/All_TF_Activity_Information_v2.csv",header = TRUE)
-
-colors <- c('#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#a9a9a9', '#008080', '#e6beff', '#00000f','#f00000')
-output_df$MR <- as.character(as.vector(output_df$MR))
-output_df$Cancer <- as.character(as.vector(output_df$Cancer))
-
-#Get only thoe master regulators which are very significant
-temp_df <- output_df[-log10(output_df$Padj)>=4.0,]
-
-p2 <- ggplot(output_df, aes(x = NES, y = -log10(Padj), 
-                            shape = Cancer
-)) + 
-  geom_rect(data=NULL,aes(xmin=-4,xmax=0,ymin=-Inf,ymax=Inf),
-            fill="green")+
-  geom_rect(data=NULL,aes(xmin=0,xmax=4,ymin=-Inf,ymax=Inf),
-            fill="yellow")+
-  geom_point()+
-  geom_point(data=output_df[output_df$Cancer==all_inv[12],], aes(x=NES, y=-log10(Padj), color=all_inv[12]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[1],], aes(x=NES, y=-log10(Padj), color=all_inv[1]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[2],], aes(x=NES, y=-log10(Padj), color=all_inv[2]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[3],], aes(x=NES, y=-log10(Padj), color=all_inv[3]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[4],], aes(x=NES, y=-log10(Padj), color=all_inv[4]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[5],], aes(x=NES, y=-log10(Padj), color=all_inv[5]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[6],], aes(x=NES, y=-log10(Padj), color=all_inv[6]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[7],], aes(x=NES, y=-log10(Padj), color=all_inv[7]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[8],], aes(x=NES, y=-log10(Padj), color=all_inv[8]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[9],], aes(x=NES, y=-log10(Padj), color=all_inv[9]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[10],], aes(x=NES, y=-log10(Padj), color=all_inv[10]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[11],], aes(x=NES, y=-log10(Padj), color=all_inv[11]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[13],], aes(x=NES, y=-log10(Padj), color=all_inv[13]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[14],], aes(x=NES, y=-log10(Padj), color=all_inv[14]))+
-  xlab("Normalized Enrichment Scores (NES)") + ylab("-log10(Padj)") +
-  scale_shape_manual(name = "Cancer", values = 1:nlevels(as.factor(output_df$Cancer))) +
-  scale_color_manual(name = "Cancer", values =  colors) +
-  geom_hline(yintercept=c(0,-log10(0.05),4),color=c("black","blue","red")) + geom_vline(xintercept = 0) + xlim(c(-4,4)) + ylim(c(0,6)) +
-  theme_minimal() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  #theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),plot.background=element_rect(fill = "black"),
-  #      panel.background = element_rect(fill = 'black'),legend.background = element_rect(fill = "black", color = NA),
-  #      legend.key = element_rect(color = "gray", fill = "black"), legend.title = element_text(color = "white"), legend.text = element_text(color = "white"))+
-  geom_text(aes(x=NES,y=-log10(Padj),label=MR),
-            data=temp_df, 
-            hjust = 0, vjust = 0, nudge_x = 0.01, angle = 45,
-            size = 4, check_overlap = T) +
-  ggtitle("Significance vs NES for Common MRs") + theme(text = element_text(size=16,color="black")) + theme(axis.text = element_text(size=14, color="black")) + theme(plot.title = element_text(hjust = 0.5,color="black")) + coord_fixed(ratio=0.7)
-ggsave(file="../Results/Paper_Figures/Figure2/Volcano_Plot_TF_Activity_2A.pdf",plot = p2, device = pdf(), width = 12, height=10, units = "in", dpi = 300)
+pdf("../Results/Paper_Figures/Figure2/BLCA_TF_Activity_Figure_2D.pdf",width=8,height=8,pointsize=11)
+par(bg="white")
+par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=2.0, cex = 2.5)
+heatmap.3(amat.pheno[hc.rows$order,hc.cols$order], Rowv = NULL, Colv = NULL, col = bluered(50), scale="none", main= "TF Regulon Activity Matrix",
+          xlab = "TCGA Samples", ylab = "TFs", labRow = FALSE, labCol = FALSE, dendrogram = "none", cexRow=6, cexCol=6,
+          key = TRUE, density.info = "none", KeyValueName = "Activity Value",
+          margins = c(2,2), useRaster = TRUE)
 dev.off()
 
-#Make supplementary figures
-supplementary_df <- output_df[,c(3,5,6)]
-t_supp_df <- melt(supplementary_df,id.vars = "NES")
-colnames(t_supp_df) <- c("NES","INV","value")
-t_supp_df$"NES_Eff" <- t_supp_df$NES>0
-t_supp_df$INV <- as.character(as.vector(t_supp_df$INV))
-t_supp_df[t_supp_df$INV=="Median_INV_High",]$INV <- "INV High"
-t_supp_df[t_supp_df$INV=="Median_INV_Low",]$INV <- "INV Low"
-t_supp_df[t_supp_df$NES>0,]$"NES_Eff" <- "NES>0"
-t_supp_df[t_supp_df$NES<=0,]$"NES_Eff" <- "NES<0"
-t_supp_df$value <- as.numeric(as.vector(t_supp_df$value))
 
-p_supp <- ggplot(t_supp_df, aes(x=NES_Eff,y=value, fill=INV )) + geom_boxplot(position = position_dodge(0.9), outlier.alpha = 0.1 ) +
-  scale_fill_manual(name="INV Phenotype" ,values = c("yellow", "green")) + xlab("Categorized NES") + ylab("Median Common MR Activities")+
-  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + ylim(c(-0.5,0.5)) +
-  ggtitle("NES based classification of Common MRs") + theme(text = element_text(size=16)) + theme(plot.title = element_text(hjust = 0.5))+
-  geom_text(x=1,y=0.35,label="****",col="red") + geom_text(x=2,y=0.35,label="****",col="red")
-ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_3.jpg",plot=p_supp,device=jpeg(),width=12,height=10,units="in",dpi=300)
+###########################################################################################################################
+
+#Get difference in expression of target genes using INV High vs INV Low phenotype
+#===================================================================================
+pheno_t <- c()
+pv_t <- c()
+for (j in 1:nrow(D)){
+  cat(j,"\n")
+  high_sens <- mean(D[j,high_indices]);
+  low_sens <- mean(D[j,low_indices]);
+  pheno_t <- c(pheno_t,high_sens-low_sens);
+  pv_t <- c(pv_t,wilcox.test(D[j,high_indices],D[j,low_indices],exact=F)$p.value)
+}
+padj_t = p.adjust(pv_t,method="fdr")
+names(pheno_t) <- rownames(D);
+sorted_pheno_t <- sort(pheno_t,decreasing = TRUE)
+
+#Perform gene set enrichment 
+#========================================================================================
+require(fgsea)
+load(paste0(outputpath,"/Adjacency_Matrix/",sample_name,"regulon_FGSEA.Rdata"))
+fgseaRes <- fgseaMultilevel(regulon_sets,sorted_pheno_t,minSize=10,maxSize=max(unlist(lapply(regulon_sets,length))))
+topPathwaysUp <- fgseaRes[ES > 0][head(order(pval), n=15), pathway]
+topPathwaysDown <- fgseaRes[ES < 0][head(order(pval), n=15), pathway]
+topPathways <- c(topPathwaysUp, rev(topPathwaysDown))
+
+#Get plot of top MRs and select top MRs
+#========================================================================================
+pdf("../Results/Paper_Figures/Figure2/BLCA_GeneRanks_FGSEA_Figure_2E.pdf",pointsize=11, height = 8, width = 8)
+par(bg="white")
+par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=2.0, cex = 2.5)
+plotGseaTable(regulon_sets[topPathways], sorted_pheno_t, fgseaRes, gseaParam = 0.5)
 dev.off()
 
-#Plot average activity of Common MRs coloring the MR per cancer
-#============================================================================================================================
-p3 <- ggplot(output_df, aes(x = Median_INV_High, y = Median_INV_Low, 
-                            shape = Cancer,
-                            size = -log10(Padj)
-)) + 
-  geom_point()+
-  geom_point(data=output_df[output_df$Cancer==all_inv[12],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[12]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[1],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[1]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[2],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[2]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[3],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[3]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[4],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[4]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[5],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[5]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[6],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[6]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[7],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[7]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[8],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[8]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[9],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[9]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[10],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[10]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[11],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[11]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[13],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[13]))+
-  geom_point(data=output_df[output_df$Cancer==all_inv[14],], aes(x=Median_INV_High, y=Median_INV_Low, color=all_inv[14]))+
-  xlab("Median Activity in INV High samples") + ylab("Median Activity in INV Low samples") +
-  scale_shape_manual(name = "Cancer", values = 1:nlevels(as.factor(output_df$Cancer))) +
-  scale_color_manual(name = "Cancer", values =  colors) +
-  scale_size_continuous(range=c(0.1,3)) +
-  geom_hline(yintercept=0,col="black") + geom_vline(xintercept = 0,col="black") + xlim(c(-0.4,0.4)) + ylim(c(-0.4,0.4)) +
-  theme_minimal() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  #theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),plot.background=element_rect(fill = "black"),
-  #      panel.background = element_rect(fill = 'black'),legend.background = element_rect(fill = "black", color = NA),
-  #      legend.key = element_rect(color = "gray", fill = "black"), legend.title = element_text(color = "white"), legend.text = element_text(color = "white"))+
-  geom_text(aes(x=Median_INV_High,y=Median_INV_Low,label=MR),
-            data=temp_df,
-            hjust = 0, vjust = 0, nudge_x = 0.01, angle = 45,
-            size = 4, check_overlap = T,color="black") +
-  ggtitle("Median Common MR Activity for INV High vs INV Low Phenotype") + theme(text = element_text(size=16,color="black")) + theme(axis.text = element_text(size=14, color="black")) + theme(plot.title = element_text(hjust = 0.5,color="black")) + coord_fixed(ratio=0.7)
-ggsave(file="../Results/Paper_Figures/Figure2/Avg_TF_Activity_Figure_2B.pdf",plot = p3, device = pdf(), width = 12, height=10, units = "in", dpi = 300)
+######################################################################################################################
+#Get Top MR make their activity matrix
+load(paste0(outputpath,"/Adjacency_Matrix/",sample_name,"TopMR_Info_FGSEA_BC_NES_1.Rdata"))
+new_mr_activity_matrix <- as.matrix(amat[topmr_info$pathway,c(high_indices,low_indices)])
+rownames(new_mr_activity_matrix)
+colnames(new_mr_activity_matrix) <- NULL
+min_activity <- min(new_mr_activity_matrix)
+max_activity <- max(new_mr_activity_matrix)
+for (i in 1:ncol(new_mr_activity_matrix))
+{
+  for (j in 1:nrow(new_mr_activity_matrix))
+  {
+    if (new_mr_activity_matrix[j,i]>0)
+    {
+      new_mr_activity_matrix[j,i] <- new_mr_activity_matrix[j,i]/max_activity
+    } else{
+      new_mr_activity_matrix[j,i] <- new_mr_activity_matrix[j,i]/abs(min_activity)
+    }
+  }
+  
+}
+
+colcol <- matrix(0,nrow=ncol(new_mr_activity_matrix),ncol=1)
+#rep("white",ncol(new_mr_activity_matrix));
+high_ids <- c(1:length(high_indices));
+low_ids <- c((length(high_indices)+1):length(colcol))
+colcol[high_ids,1] <- "red"
+colcol[low_ids,1] <- "blue"
+colnames(colcol) <- "INV Phenotype"
+hc_high.cols <- hclust(dist(t(new_mr_activity_matrix[,high_ids])),method='average')
+hc_low.cols <- hclust(dist(t(new_mr_activity_matrix[,low_ids])),method='ward.D')
+hc.cols <- c(hc_high.cols$order,length(high_ids)+hc_low.cols$order);
+hc.rows <- hclust(dist(new_mr_activity_matrix),method='ward.D')
+
+#Make the plot of activity matrix clustered by ICR High vs ICR Low
+#=================================================================================================
+pdf("../Results/Paper_Figures/Figure2/BLCA_TopMR_Activity_Figure_2F.pdf",height=8,width=8,pointsize=11)
+par(bg="white")
+par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=2.0, cex = 2.5)
+heatmap.3(new_mr_activity_matrix[hc.rows$order,hc.cols], Rowv = NULL, Colv = NULL, col = bluered(50), scale="none", main= "Master Regulator Activity Matrix",
+          xlab = "TCGA Samples", ylab = "Top MRs", labRow = FALSE, labCol = FALSE, dendrogram = "none",
+          key = TRUE, density.info = "none", KeyValueName = "Activity Value", ColSideColors = colcol, ColSideColorsSize=2,cexCol=2,
+          margins = c(2,2), useRaster = TRUE)
 dev.off()
 
-#Make Revised Figure 2
-#================================================================================================================
-figure <- ggarrange(p2, p3,
-                    labels = c("A", "B"),
-                    ncol = 2, nrow = 1)
-ggsave(filename = paste0("../Results/Paper_Figures/Figure2/Figure2.pdf"),device = pdf(), plot = figure, dpi = 300, width = 20, height=6 , units = "in" )
-dev.off()
