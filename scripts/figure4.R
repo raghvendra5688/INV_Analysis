@@ -117,13 +117,11 @@ get_common_mrs <- function(cancer)
   return(list_common_mrs)
 }
 
-INV_enabled <- c("BLCA","COAD","LGG","OV","PRAD","PAAD","STAD","LUAD","LUSC","ESCA")
-INV_disabled <- c("HNSC","DLBC","LIHC","THCA")
-
+INV_enabled <- c("LGG","KIRP","PAAD","MESO","KIRC",
+                 "COAD","BLCA","STAD","LUAD","OV")
 tfs_enabled_activity_info <- NULL
-tfs_disabled_activity_info <- NULL
 
-#Get the list of TFs which are common to all the 12 ICR Enabled cancers and their median activity in ICR High vs ICR Low samples per cancer
+#Get the list of TFs which are common to all the 10 INV related cancers and their median activity in INV High vs INV Low samples per cancer
 #############################################################################################################################
 colors <- c('#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#a9a9a9', '#008080', '#e6beff', '#00000f','#f00000')
 first_cancer <- INV_enabled[1];
@@ -141,14 +139,14 @@ tfs_enabled_activity_info$Cancer <- as.character(as.vector(tfs_enabled_activity_
 tfs_enabled_activity_info$Median_INV_High <- as.numeric(as.vector(tfs_enabled_activity_info$Median_INV_High))
 tfs_enabled_activity_info$Median_INV_Low <- as.numeric(as.vector(tfs_enabled_activity_info$Median_INV_Low))
 
-#Select those transcription regulators which are TFs with regulons of size >= 10 in all the Inv Enabled Cancers
-common_tfs_enabled_list <- names(which(table(tfs_enabled_activity_info$TFs)>9))
+#Select those transcription regulators which are TFs with regulons of size >= 10 in all the INV Enabled Cancers
+common_tfs_enabled_list <- names(which(table(tfs_enabled_activity_info$TFs)>=10))
 common_tfs_enabled_activity_info <- tfs_enabled_activity_info[tfs_enabled_activity_info$TFs %in% common_tfs_enabled_list,]
 
 #Make a list of how many times does a common MR appear for the INV Enabled cancers
 first_cancer <- INV_enabled[1];
 list_common_mrs_enabled <- get_common_mrs(first_cancer)
-topMRs_enabled <- rep(list("BLCA"),length(list_common_mrs_enabled))
+topMRs_enabled <- rep(list("LGG"),length(list_common_mrs_enabled))
 names(topMRs_enabled) <- list_common_mrs_enabled
 for(i in 2:length(INV_enabled))
 {
@@ -164,9 +162,9 @@ for(i in 2:length(INV_enabled))
     }
   }
 }
-all_icr_cancers <- unlist(lapply(topMRs_enabled,function(x) paste(x,collapse=" ")))
-no_icr_cancers <- unlist(lapply(topMRs_enabled,function(x) length(x)))
-enabled_df <- cbind(names(all_icr_cancers),as.character(all_icr_cancers),as.numeric(no_icr_cancers))
+all_inv_cancers <- unlist(lapply(topMRs_enabled,function(x) paste(x,collapse=" ")))
+no_inv_cancers <- unlist(lapply(topMRs_enabled,function(x) length(x)))
+enabled_df <- cbind(names(all_inv_cancers),as.character(all_inv_cancers),as.numeric(no_inv_cancers))
 enabled_df <- as.data.frame(enabled_df)
 colnames(enabled_df) <- c("MR","List_INV_Cancers","No_INV_Cancers")
 enabled_df$MR <- as.character(as.vector(enabled_df$MR))
@@ -175,14 +173,11 @@ enabled_df$No_INV_Cancers <- as.character(as.vector(enabled_df$No_INV_Cancers))
 enabled_df <- enabled_df[order(enabled_df$No_INV_Cancers,decreasing=T),]
 
 #Selct MRs which are present in atleast 50% of the INV enabled cancers and are also TF for all INV enabled cancers
-#enabled_7_MR <- enabled_df[enabled_df$No_ICR_Cancers==7,]$MR
-#enabled_7_MR_and_TF <- enabled_7_MR[enabled_7_MR %in% common_tfs_enabled_list]
-#enabled_7_MR_and_TF <- paste0(enabled_7_MR_and_TF,collapse = ", ")
-temp_enabled_df <- enabled_df[enabled_df$No_INV_Cancers>=5,]
+temp_enabled_df <- enabled_df[enabled_df$No_INV_Cancers>5,]
 temp_enabled_df <- temp_enabled_df[temp_enabled_df$MR %in% common_tfs_enabled_list, ]
-write.table(temp_enabled_df,"../Results/Paper_Text/All_MRs_TFs_INV_Enabled_Supplementary_Table_S3.csv",row.names=F,col.names=T,quote=F,sep=",")
+write.table(temp_enabled_df,"../Results/Paper_Text/All_MRs_TFs_INV_Supplementary_Table_S3.csv",row.names=F,col.names=T,quote=F,sep=",")
 
-#Get list of common MRs which are all TFs in 5 out of 10 cancers
+#Get list of common MRs which are all TFs in >5 out of 10 cancers
 #########################################################################################################################
 common_mrs_enabled_list <- temp_enabled_df$MR;
 common_mrs_enabled_list <- sort(common_mrs_enabled_list)
@@ -202,10 +197,10 @@ for (i in 1:length(INV_enabled))
 }
 
 colcol <- matrix(0,nrow=2*length(INV_enabled),ncol=1)
-colcol[c(1:length(INV_enabled)),1] <- "yellow"
-colcol[c((length(INV_enabled)+1):(2*length(INV_enabled))),1] <- "green"
+colcol[c(1:length(INV_enabled)),1] <- "red"
+colcol[c((length(INV_enabled)+1):(2*length(INV_enabled))),1] <- "blue"
 
-#Perform Wilcox ranksum test or Mann-Whitney test to identify the MRs whose activity between the INV High and INV Low are significant for INV Enabled cancers
+#Perform Wilcox ranksum test or Mann-Whitney test to identify the MRs whose activity between the INV High and INV Low are significant for INV cancers
 #######################################################################################################
 output_df <- common_tfs_enabled_activity_info
 nes_info <- NULL
@@ -232,20 +227,19 @@ inv_enabled_median_comparison$MR <- as.character(as.vector(inv_enabled_median_co
 inv_enabled_median_comparison$FC_Median <- round(as.numeric(as.vector(inv_enabled_median_comparison$FC_Median)),3)
 inv_enabled_median_comparison$Pval <- p.adjust(as.numeric(as.vector(inv_enabled_median_comparison$Pval)),method = "fdr")
 final_common_mrs_enabled_list <- inv_enabled_median_comparison[inv_enabled_median_comparison$Pval<=0.05,]$MR
-
 final_common_mrs_enabled_activity_matrix <- common_mrs_enabled_activity_matrix[final_common_mrs_enabled_list,]
 
 #Figure 4A 
 #=========================================================================================================
-pdf("../Results/Paper_Figures/Figure4/Common_TopMRs_Activity_INV_Enabled_Figure_4A.pdf",height = 12, width=14, pointsize = 14)
+pdf("../Results/Paper_Figures/Figure4/Common_TopMRs_Activity_INV_Figure_4A.pdf",height = 12, width=14, pointsize = 11)
 par(bg="white")
-par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=1.75)
+par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=1.5)
 p1 <- heatmap.3(final_common_mrs_enabled_activity_matrix, Rowv = TRUE, Colv=, col = bluered(100), scale="none", main= "Median Activity of Common MRs in INV Enabled Cancers", # (>=4 out of 8)",
                 dendrogram = "both", key = TRUE, density.info = "none", KeyValueName = "Activity Value", ColSideColors = colcol, ColSideColorsSize = 2,
-                margins = c(6,6), useRaster = FALSE, cexRow = 0.6, cexCol = 2.0, cellnote = ifelse(final_common_mrs_enabled_activity_matrix>0,"+","-"), notecex = 1, notecol = "black")
+                margins = c(6,6), useRaster = FALSE, cexRow = 1.0, cexCol = 1.5, cellnote = ifelse(final_common_mrs_enabled_activity_matrix>0,"+","-"), notecex = 1, notecol = "black")
 dev.off()
 
-#Identify the MRs which are specific to ICR Low
+#Identify the MRs which are specific to INV Low
 ordered_mrs_enabled <- rev(rownames(final_common_mrs_enabled_activity_matrix)[p1$rowInd])
 ordered_p_values_inv_enabled <- NULL
 for (i in 1:length(ordered_mrs_enabled))
@@ -264,6 +258,7 @@ write.table(ordered_p_values_inv_enabled,"../Results/Paper_Text/Ordered_Pvalues_
 #Get activity of MRs specific to INV Low of interest from enabled cancers
 mrs_of_interest_enabled <- inv_enabled_median_comparison[inv_enabled_median_comparison$FC_Median<0 &
                                                            inv_enabled_median_comparison$Pval<=0.05,]$MR
+
 enabled_activity_df <- NULL
 for (cancer in INV_enabled)
 {
@@ -307,401 +302,31 @@ enabled_activity_df$TopMR <- as.character(as.vector(enabled_activity_df$TopMR))
 enabled_activity_df$Phenotype <- as.character(as.vector(enabled_activity_df$Phenotype))
 enabled_activity_df$Activity_Value <- as.numeric(as.vector(enabled_activity_df$Activity_Value))
 
-supp_p3 <- ggplot(data = enabled_activity_df, aes(x=Cancer, y=Activity_Value)) + 
-  geom_boxplot(aes(fill=Phenotype)) + facet_wrap( ~ TopMR, nrow=11, ncol=10) + xlab("Cancer") + ylab("Activity Value") +
+supp_p3 <- ggplot(data = enabled_activity_df, aes(x=Cancer, y=Activity_Value)) +  
+  geom_boxplot(aes(fill=Phenotype)) + facet_wrap( ~ TopMR, nrow=7, ncol=10) + xlab("Cancer") + ylab("Activity Value") +
   geom_point(aes(y=Activity_Value, group=Phenotype), size=0.01, position = position_dodge(width=0.75))+
-  guides(fill=guide_legend(title="Phenotype")) + scale_fill_manual(values=c("yellow","green")) +
+  guides(fill=guide_legend(title="Phenotype")) + scale_fill_manual(values=c("red","blue")) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(axis.text.x = element_text(angle = -90)) +
   ggtitle("Activities of Top MRs of specific to INV Low in INV Enabled Cancers (>=5 out of 10)") + theme(text = element_text(size=12)) + theme(plot.title = element_text(hjust = 0.5))
-ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_4.jpg",plot = supp_p3, device = jpeg(), width = 14, height=12, units = "in", dpi = 300)
+ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_5.jpg",plot = supp_p3, device = jpeg(), width = 14, height=12, units = "in", dpi = 300)
 dev.off()
 
 inv_enabled_median_comparison <- inv_enabled_median_comparison[order(inv_enabled_median_comparison$FC_Median,decreasing = T),]
 final_inv_enabled_median_comparison <- inv_enabled_median_comparison[inv_enabled_median_comparison$Pval<=0.05,]
 final_inv_enabled_median_comparison$Pval <- as.numeric(as.vector(signif(final_inv_enabled_median_comparison$Pval,digits=6)))
-write.table(final_inv_enabled_median_comparison,file="../Results/Paper_Text/All_MRs_TFs_INV_Enabled_Supplementary_Table_S4.csv",
+write.table(final_inv_enabled_median_comparison,file="../Results/Paper_Text/All_MRs_TFs_INV_Supplementary_Table_S4.csv",
             row.names = F, col.names = T, sep = " & ", quote=F)
 
+inv_low_specific_mrs <- inv_enabled_median_comparison[inv_enabled_median_comparison$FC_Median<0 &
+                                                        inv_enabled_median_comparison$Pval<=0.05,]$MR
+inv_high_specific_mrs <- inv_enabled_median_comparison[inv_enabled_median_comparison$FC_Median>0 & 
+                                                         inv_enabled_median_comparison$Pval<=0.05,]$MR
+write.table(inv_low_specific_mrs,"../Results/Paper_Text/All_INV_Low_Specific_MRs.csv", row.names=F, col.names=F, quote=F)
+write.table(inv_high_specific_mrs,"../Results/Paper_Text/All_INV_High_Specific_MRs.csv", row.names=F, col.names=F, quote=F)
+write.table(rownames(D),"../Results/Paper_Text/Background_genes.csv", row.names=F, col.names=F, quote=F)
+########################################################################################################################################################
 
-#Perform Analysis for INV Disabled
-###########################################################################################################################
-tfs_disabled_activity_info <- get_tf_median_activity(INV_disabled[1])
-for (i in 2:length(INV_disabled))
-{
-  cancer <- INV_disabled[i]
-  temp <- get_tf_median_activity(cancer)
-  tfs_disabled_activity_info <- rbind(tfs_disabled_activity_info,temp)
-}
-tfs_disabled_activity_info <- as.data.frame(tfs_disabled_activity_info)
-colnames(tfs_disabled_activity_info) <- c("TFs","Cancer","Median_INV_High","Median_INV_Low")
-tfs_disabled_activity_info$TFs <- as.character(as.vector(tfs_disabled_activity_info$TFs))
-tfs_disabled_activity_info$Cancer <- as.character(as.vector(tfs_disabled_activity_info$Cancer))
-tfs_disabled_activity_info$Median_INV_High <- as.numeric(as.vector(tfs_disabled_activity_info$Median_INV_High))
-tfs_disabled_activity_info$Median_INV_Low <- as.numeric(as.vector(tfs_disabled_activity_info$Median_INV_Low))
-
-#Select those transcription regulators which are TFs with regulons of size >= 10 in all the INV Disabled Cancers
-common_tfs_disabled_list <- names(which(table(tfs_disabled_activity_info$TFs)>3))
-common_tfs_disabled_activity_info <- tfs_disabled_activity_info[tfs_disabled_activity_info$TFs %in% common_tfs_disabled_list,]
-
-first_cancer <- INV_disabled[1];
-list_common_mrs_disabled <- get_common_mrs(first_cancer)
-topMRs_disabled <- rep(list("HNSC"),length(list_common_mrs_disabled))
-names(topMRs_disabled) <- list_common_mrs_disabled
-for(i in 2:length(INV_disabled))
-{
-  cancer_type <- INV_disabled[i]
-  list_common_mrs_disabled <- get_common_mrs(cancer_type)
-  for (j in 1:length(list_common_mrs_disabled))
-  {
-    if (list_common_mrs_disabled[j] %in% names(topMRs_disabled))
-    {
-      topMRs_disabled[[list_common_mrs_disabled[j]]] <- c(topMRs_disabled[[list_common_mrs_disabled[j]]],cancer_type)
-    } else {
-      topMRs_disabled[[list_common_mrs_disabled[j]]] <- cancer_type
-    }
-  }
-}
-
-all_inv_cancers <- unlist(lapply(topMRs_disabled,function(x) paste(x,collapse=" ")))
-no_inv_cancers <- unlist(lapply(topMRs_disabled,function(x) length(x)))
-disabled_df <- cbind(names(all_inv_cancers),as.character(all_inv_cancers),as.numeric(no_inv_cancers))
-disabled_df <- as.data.frame(disabled_df)
-colnames(disabled_df) <- c("MR","List_INV_Cancers","No_INV_Cancers")
-disabled_df$MR <- as.character(as.vector(disabled_df$MR))
-disabled_df$List_INV_Cancers <- as.character(as.vector(disabled_df$List_INV_Cancers))
-disabled_df$No_INV_Cancers <- as.character(as.vector(disabled_df$No_INV_Cancers))
-disabled_df <- disabled_df[order(disabled_df$No_INV_Cancers,decreasing=T),]
-
-temp_disabled_df <- disabled_df[disabled_df$No_INV_Cancers>=2,]
-temp_disabled_df <- temp_disabled_df[temp_disabled_df$MR %in% common_tfs_disabled_list, ]
-write.table(temp_disabled_df,"../Results/Paper_Text/All_MRs_TFs_INV_Disabled_Supplementary_Table_S5.csv",row.names=F,col.names=T,quote=F,sep=",")
-
-#Get list of common MRs which are also TFs in 2 out of 4 cancers
-############################################################################################
-common_mrs_disabled_list <- temp_disabled_df$MR;
-common_mrs_disabled_list <- sort(common_mrs_disabled_list)
-common_mrs_disabled_activity_matrix <- matrix(0,nrow=length(common_mrs_disabled_list),ncol=2*length(INV_disabled))
-rownames(common_mrs_disabled_activity_matrix) <- common_mrs_disabled_list
-colnames(common_mrs_disabled_activity_matrix) <- c(INV_disabled,INV_disabled)
-for (i in 1:length(INV_disabled))
-{
-  cancer <- INV_disabled[i]
-  temp_df <- common_tfs_disabled_activity_info[common_tfs_disabled_activity_info$TFs %in% common_mrs_disabled_list 
-                                               & common_tfs_disabled_activity_info$Cancer==cancer,]
-  temp_df <- temp_df[order(temp_df$TFs),]
-  inv_high <- temp_df$Median_INV_High
-  inv_low <- temp_df$Median_INV_Low
-  common_mrs_disabled_activity_matrix[common_mrs_disabled_list,i] <- inv_high
-  common_mrs_disabled_activity_matrix[common_mrs_disabled_list,(i+length(INV_disabled))] <- inv_low
-}
-
-colcol <- matrix(0,nrow=2*length(INV_disabled),ncol=1)
-colcol[c(1:length(INV_disabled)),1] <- "yellow"
-colcol[c((length(INV_disabled)+1):(2*length(INV_disabled))),1] <- "green"
-
-#Perform Wilcox ranksum test or Mann-Whitney test to identify the MRs whose activity between the INV High and INV Low are significant for INV Disabled cancers
-#######################################################################################################
-output_df <- common_tfs_disabled_activity_info
-nes_info <- NULL
-nes_pval <- NULL
-for (i in 1:length(common_mrs_disabled_list))
-{
-  mr <- common_mrs_disabled_list[i]
-  mr_inv_high_values <- NULL
-  mr_inv_low_values <- NULL
-  for (cancer in INV_disabled)
-  {
-    mr_activity_list <- get_tf_activity_high_low(cancer,mr)
-    mr_inv_high_values <- c(mr_inv_high_values,mr_activity_list[[1]])
-    mr_inv_low_values <- c(mr_inv_low_values,mr_activity_list[[2]])
-  }
-  nes_info <- c(nes_info,median(mr_inv_high_values)-median(mr_inv_low_values))
-  nes_pval <- c(nes_pval,wilcox.test(mr_inv_high_values,mr_inv_low_values,exact=F)$p.value)
-}
-inv_disabled_median_comparison <- cbind(common_mrs_disabled_list,nes_info,nes_pval)
-inv_disabled_median_comparison <- as.data.frame(inv_disabled_median_comparison)
-colnames(inv_disabled_median_comparison) <- c("MR","FC_Median","Pval")
-inv_disabled_median_comparison$MR <- as.character(as.vector(inv_disabled_median_comparison$MR))
-inv_disabled_median_comparison$FC_Median <- round(as.numeric(as.vector(inv_disabled_median_comparison$FC_Median)),3)
-inv_disabled_median_comparison$Pval <- p.adjust(as.numeric(as.vector(inv_disabled_median_comparison$Pval)),method = "fdr")
-final_common_mrs_disabled_list <- inv_disabled_median_comparison[inv_disabled_median_comparison$Pval<=0.05,]$MR
-final_common_mrs_disabled_activity_matrix <- common_mrs_disabled_activity_matrix[final_common_mrs_disabled_list,]
-
-#Figure 4B
-#=========================================================================================================
-pdf("../Results/Paper_Figures/Figure4/Common_TopMRs_Activity_INV_Disabled_Figure_4B.pdf",height = 12, width=14, pointsize = 14)
-par(bg="white")
-par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=1.65)
-p2 <- heatmap.3(final_common_mrs_disabled_activity_matrix, Rowv = TRUE, Colv=TRUE, col = bluered(100), scale="none", main= "Median Activity of Common MRs in INV Disabled Cancers", # (>=2 out of 4)",
-                dendrogram = "both", key = TRUE, density.info = "none", KeyValueName = "Activity Value", ColSideColors = colcol, ColSideColorsSize = 2,
-                margins = c(6,6), useRaster = FALSE, cexRow = 0.6, cexCol = 2, cellnote = ifelse(final_common_mrs_disabled_activity_matrix>0,"+","-"), notecex = 0.75, notecol = "black")
-dev.off()
-
-ordered_mrs_disabled <- rev(rownames(final_common_mrs_disabled_activity_matrix)[p2$rowInd])
-ordered_p_values_inv_disabled <- NULL
-for (i in 1:length(ordered_mrs_disabled))
-{
-  mr <- ordered_mrs_disabled[i]
-  adj_pval <- inv_disabled_median_comparison[inv_disabled_median_comparison$MR==mr,]$Pval
-  temp <- cbind(mr,adj_pval)
-  ordered_p_values_inv_disabled <- rbind(ordered_p_values_inv_disabled,temp)
-}
-ordered_p_values_inv_disabled <- as.data.frame(ordered_p_values_inv_disabled)
-colnames(ordered_p_values_inv_disabled) <- c("MR","Adj_Pval")
-ordered_p_values_inv_disabled$MR <- as.character(as.vector(ordered_p_values_inv_disabled$MR))
-ordered_p_values_inv_disabled$Adj.Pval <- as.numeric(as.vector(ordered_p_values_inv_disabled$Adj_Pval))
-write.table(ordered_p_values_inv_disabled,"../Results/Paper_Text/Ordered_Pvalues_INV_Disabled_MRs.csv",row.names=F,col.names=T,quote=F,sep=",")
-
-#Get activity of mrs of interest from INV Disabled cancers
-mrs_of_interest_disabled <- inv_disabled_median_comparison[inv_disabled_median_comparison$FC_Median<0 &
-                                                             inv_disabled_median_comparison$Pval<=0.05,]$MR
-disabled_activity_df <- NULL
-for (cancer in INV_disabled)
-{
-  load(paste0("../Results/",cancer,"/Adjacency_Matrix/",cancer,"_Full_Activity_matrix_FGSEA.Rdata"))
-  amat[amat>0] <- amat[amat>0]/max(amat)
-  amat[amat<0] <- amat[amat<0]/abs(min(amat))
-  
-  #Load mechanistic network
-  #======================================================================================
-  load('../Data/Others/me_net_full.Rdata')
-  
-  #Get the data
-  filename = cancer
-  out <- loading_data(filename,M)
-  D <- as.matrix(log2(t(out[[1]])+1))
-  
-  #Get high and low indices
-  load(paste0("../Data/",filename,"/",filename,"_INV_cluster_assignment_k2-6_v2.Rdata"))
-  high_low_output <- get_high_low_indices(table_cluster_assignment,D)
-  table_cluster_assignment <- high_low_output[[1]]
-  high_indices <- high_low_output[[2]]
-  low_indices <- high_low_output[[3]]
-  
-
-  for (topmr in mrs_of_interest_disabled)
-  {
-    high_activity <- amat[topmr,high_indices]
-    low_activity <- amat[topmr,low_indices]
-    disabled_activity_df <- rbind(disabled_activity_df,
-                                  cbind(rep(cancer,length(high_activity)+length(low_activity)),
-                                        rep(topmr,length(high_activity)+length(low_activity)),
-                                        c(rep("INV High",length(high_activity)),rep("INV Low",length(low_activity))),
-                                        c(high_activity,low_activity)))
-  }
-}
-
-disabled_activity_df <- as.data.frame(disabled_activity_df)
-colnames(disabled_activity_df) <- c("Cancer","TopMR","Phenotype","Activity_Value")
-disabled_activity_df$Cancer <- as.character(as.vector(disabled_activity_df$Cancer))
-disabled_activity_df$TopMR <- as.character(as.vector(disabled_activity_df$TopMR))
-disabled_activity_df$Phenotype <- as.character(as.vector(disabled_activity_df$Phenotype))
-disabled_activity_df$Activity_Value <- as.numeric(as.vector(disabled_activity_df$Activity_Value))
-
-supp_p4 <- ggplot(data = disabled_activity_df, aes(x=Cancer, y=Activity_Value)) + 
-  geom_boxplot(aes(fill=Phenotype)) + facet_wrap( ~ TopMR, nrow=13, ncol=12) + xlab("Cancer") + ylab("Activity Value") +
-  geom_point(aes(y=Activity_Value, group=Phenotype), size=0.01, position = position_dodge(width=0.75))+
-  guides(fill=guide_legend(title="Phenotype")) + scale_fill_manual(values=c("yellow","green")) +
-  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(axis.text.x = element_text(angle = -90)) +
-  ggtitle("Activities of Top MRs of specific to INV Low in INV Enabled Cancers (>=2 out of 4)") + theme(text = element_text(size=12)) + theme(plot.title = element_text(hjust = 0.5))
-ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_5.jpg",plot = supp_p4, device = jpeg(), width = 14, height=12, units = "in", dpi = 300)
-dev.off()
-
-inv_disabled_median_comparison <- inv_disabled_median_comparison[order(inv_disabled_median_comparison$FC_Median,decreasing = T),]
-final_inv_disabled_median_comparison <- inv_disabled_median_comparison[inv_disabled_median_comparison$Pval<=0.05,]
-write.table(final_inv_disabled_median_comparison,file="../Results/Paper_Text/All_MRs_TFs_INV_Disabled_Supplementary_Table_S7.csv",
-            row.names = F, col.names = T, sep = " & ", quote=F)
-#=========================================================================================================================
-
-
-#Activity of MRs specific to ICR High in all 12 cancers of interest (Figures 4C, 4E)
-###########################################################################################################################
-mrs_inv_high_all_cancers <- union(final_inv_enabled_median_comparison[final_inv_enabled_median_comparison$FC_Median>0,]$MR,
-                                  final_inv_disabled_median_comparison[final_inv_disabled_median_comparison$FC_Median>0,]$MR)
-
-all_cancers <- c(INV_enabled,INV_disabled)
-mrs_inv_high_activity_matrix <- matrix(0,nrow=length(mrs_inv_high_all_cancers),ncol=(length(INV_enabled)+length(INV_disabled)))
-rownames(mrs_inv_high_activity_matrix) <- mrs_inv_high_all_cancers
-colnames(mrs_inv_high_activity_matrix) <- all_cancers
-mrs_high_df <- NULL
-for (i in 1:length(mrs_inv_high_all_cancers))
-{
-  topmr <- mrs_inv_high_all_cancers[i]
-  print(paste0("Stuck at MR: ",topmr," at iteration ",i))
-  inv_enabled_high_activity_values <- NULL
-  inv_disabled_high_activity_values <- NULL
-  for (j in 1:length(all_cancers))
-  {
-    cancer <- all_cancers[j]
-    if (cancer %in% INV_enabled)
-    {
-      out_activity <- get_tf_activity_high_low(cancer,topmr)
-      inv_enabled_high_activity_values <- c(inv_enabled_high_activity_values,out_activity[[1]])
-      mrs_inv_high_activity_matrix[topmr,cancer] <- median(out_activity[[1]])
-    } 
-    else if (cancer %in% INV_disabled)
-    {
-      out_activity <- get_tf_activity_high_low(cancer,topmr)
-      inv_disabled_high_activity_values <- c(inv_disabled_high_activity_values,out_activity[[1]])
-      mrs_inv_high_activity_matrix[topmr,cancer] <- median(out_activity[[1]])
-    }
-  }
-  median_inv_enabled_high <- median(inv_enabled_high_activity_values)
-  median_inv_disabled_high <- median(inv_disabled_high_activity_values)
-  fc_info <- median(inv_enabled_high_activity_values)-median(inv_disabled_high_activity_values)
-  pval <- wilcox.test(inv_enabled_high_activity_values,inv_disabled_high_activity_values,exact=F)$p.value
-  temp <- cbind(topmr,fc_info,median_inv_enabled_high,median_inv_disabled_high,pval)
-  mrs_high_df <- rbind(mrs_high_df,temp)
-}
-mrs_high_df <- as.data.frame(mrs_high_df)
-colnames(mrs_high_df) <- c("MR","FC_Median","Median_INV_Enabled","Median_INV_Disabled","Padj")
-mrs_high_df$MR <- as.character(as.vector(mrs_high_df$MR))
-mrs_high_df$Padj <- p.adjust(as.numeric(as.vector(mrs_high_df$Padj)),method="fdr")
-mrs_high_df$FC_Median <- round(as.numeric(as.vector(mrs_high_df$FC_Median)),3)
-mrs_high_df$Median_INV_Enabled <- round(as.numeric(as.vector(mrs_high_df$Median_INV_Enabled)),3)
-mrs_high_df$Median_INV_Disabled <- round(as.numeric(as.vector(mrs_high_df$Median_INV_Disabled)),3)
-
-top_positive_common_mrs_high <- mrs_high_df[mrs_high_df$Median_INV_Enabled>=0 & mrs_high_df$Median_INV_Disabled>=0,]$MR
-top_negative_enabled_positive_disabled_mrs_high <- mrs_high_df[mrs_high_df$Median_INV_Enabled<0.0 & 
-                                                                 mrs_high_df$Median_INV_Disabled>0 &
-                                                                 mrs_high_df$Padj<=0.05,]$MR
-
-
-interesting_mr_high <- c(top_positive_common_mrs_high,top_negative_enabled_positive_disabled_mrs_high)
-interesting_mr_high_df <- mrs_high_df[mrs_high_df$MR %in% interesting_mr_high,]
-interesting_mr_high_df <- interesting_mr_high_df[order(interesting_mr_high_df$Median_INV_Enabled,decreasing=T),]
-write.table(interesting_mr_high_df,"../Results/Paper_Text/All_MRS_INV_High_Supplementary_Table_S7c.csv",row.names=F,col.names=T,sep="&", quote=F)
-
-
-positive_mrs_inv_high_activity_matrix <- mrs_inv_high_activity_matrix[top_positive_common_mrs_high,]
-pdne_mrs_inv_high_activity_matrix <- mrs_inv_high_activity_matrix[top_negative_enabled_positive_disabled_mrs_high,] 
-imp_mr_high_for_overexpression_analysis <- rownames(positive_mrs_inv_high_activity_matrix)
-write.table(imp_mr_high_for_overexpression_analysis,"../Results/Paper_Text/All_MRS_INV_High_Important.csv",row.names=F,col.names=F,quote=F)
-
-
-colcol <- matrix(0,nrow=length(all_cancers),ncol=1)
-colcol[c(1:length(INV_enabled)),1] <- "#FDB100"
-colcol[c((length(INV_enabled)+1):length(all_cancers)),1] <- "#660066"
-
-#Figure 4C
-#====================================================================================
-pdf("../Results/Paper_Figures/Figure4/Common_TopMRs_Activity_INV_High_Figure_4C.pdf",height = 10, width=14, pointsize = 12)
-p3 <- heatmap.3(positive_mrs_inv_high_activity_matrix, Rowv = FALSE, Colv=FALSE, col = bluered(100), scale="none", main= "Median Activity of MRs specific to INV High Phenotype for 14 cancers in INV High samples",
-                dendrogram = "none", key = TRUE, density.info = "none", KeyValueName = "Activity Value", ColSideColors = colcol, ColSideColorsSize = 2,
-                margins = c(6,6), useRaster = FALSE, cexRow = 0.5, cexCol = 1.5, cellnote = ifelse(positive_mrs_inv_high_activity_matrix>=0,"+","-"), notecex = 1.0, notecol = "black")
-dev.off()
-
-hc.rows <- hclust(dist(pdne_mrs_inv_high_activity_matrix),method='ward.D2')
-colcol <- matrix(0,nrow=length(all_cancers),ncol=2)
-colnames(colcol) <- c("Enabled/Disabled","INV High")
-colcol[c(1:length(INV_enabled)),1] <- "#FDB100"
-colcol[c((length(INV_enabled)+1):length(all_cancers)),1] <- "#660066"
-colcol[c(1:14),2] <- "yellow"
-
-#Figure 4E
-#====================================================================================
-pdf("../Results/Paper_Figures/Figure5/Different_TopMRs_Activity_INV_High_Figure_5A.pdf",height = 10, width=12, pointsize = 12)
-par(bg="white")
-par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=1.0)
-heatmap.3(pdne_mrs_inv_high_activity_matrix[hc.rows$order,], Rowv = FALSE, Colv=FALSE, col = bluered(100), scale="none", main= "Median Activity of INV High MRs different between INV Enabled & INV Disabled cancers",
-          dendrogram = "none", key = TRUE, density.info = "none", KeyValueName = "Activity Value", ColSideColors = colcol, ColSideColorsSize = 3,
-          margins = c(6,6), useRaster = FALSE, cexRow = 1.5, cexCol = 1.5, cellnote = ifelse(pdne_mrs_inv_high_activity_matrix[hc.rows$order,]<=0.0,"-","+"), notecex = 2, notecol = "black")
-dev.off()
-#==================================================================================================================================
-
-#Activity of MRs specific to INV Low in all 14 cancers of interest (Figures 4D, 4F)
-#==============================================================================================================================
-mrs_inv_low_all_cancers <- union(final_inv_enabled_median_comparison[final_inv_enabled_median_comparison$FC_Median<0,]$MR,
-                                 final_inv_disabled_median_comparison[final_inv_disabled_median_comparison$FC_Median<0,]$MR)
-
-all_cancers <- c(INV_enabled,INV_disabled)
-mrs_inv_low_activity_matrix <- matrix(0,nrow=length(mrs_inv_low_all_cancers),ncol=(length(INV_enabled)+length(INV_disabled)))
-rownames(mrs_inv_low_activity_matrix) <- mrs_inv_low_all_cancers
-colnames(mrs_inv_low_activity_matrix) <- all_cancers
-mrs_low_df <- NULL
-for (i in 1:length(mrs_inv_low_all_cancers))
-{
-  topmr <- mrs_inv_low_all_cancers[i]
-  inv_enabled_low_activity_values <- NULL
-  inv_disabled_low_activity_values <- NULL
-  for (j in 1:length(all_cancers))
-  {
-    cancer <- all_cancers[j]
-    if (cancer %in% INV_enabled)
-    {
-      out_activity <- get_tf_activity_high_low(cancer,topmr)
-      inv_enabled_low_activity_values <- c(inv_enabled_low_activity_values,out_activity[[2]])
-      mrs_inv_low_activity_matrix[topmr,cancer] <- median(out_activity[[2]])
-    } 
-    else if (cancer %in% INV_disabled)
-    {
-      out_activity <- get_tf_activity_high_low(cancer,topmr)
-      inv_disabled_low_activity_values <- c(inv_disabled_low_activity_values,out_activity[[2]])
-      mrs_inv_low_activity_matrix[topmr,cancer] <- median(out_activity[[2]])
-    }
-  }
-  median_inv_enabled_low <- median(inv_enabled_low_activity_values)
-  median_inv_disabled_low <- median(inv_disabled_low_activity_values)
-  fc_info <- median(inv_enabled_low_activity_values)-median(inv_disabled_low_activity_values)
-  pval <- wilcox.test(inv_enabled_low_activity_values,inv_disabled_low_activity_values,exact=F)$p.value
-  temp <- cbind(topmr,fc_info,median_inv_enabled_low,median_inv_disabled_low,pval)
-  mrs_low_df <- rbind(mrs_low_df,temp)
-}
-mrs_low_df <- as.data.frame(mrs_low_df)
-colnames(mrs_low_df) <- c("MR","FC_Median","Median_INV_Enabled","Median_INV_Disabled","Padj")
-mrs_low_df$MR <- as.character(as.vector(mrs_low_df$MR))
-mrs_low_df$Padj <- p.adjust(as.numeric(as.vector(mrs_low_df$Padj)),method="fdr")
-mrs_low_df$FC_Median <- round(as.numeric(as.vector(mrs_low_df$FC_Median)),3)
-mrs_low_df$Median_INV_Enabled <- round(as.numeric(as.vector(mrs_low_df$Median_INV_Enabled)),3)
-mrs_low_df$Median_INV_Disabled <- round(as.numeric(as.vector(mrs_low_df$Median_INV_Disabled)),3)
-
-top_positive_common_mrs_low <- mrs_low_df[mrs_low_df$Median_INV_Enabled>0 & mrs_low_df$Median_INV_Disabled>0,]$MR
-top_positive_enabled_negative_disabled_mrs_low <- mrs_low_df[mrs_low_df$Median_INV_Enabled>=0.0 & 
-                                                               mrs_low_df$Median_INV_Disabled<0 &
-                                                               mrs_low_df$Padj<=0.05,]$MR
-
-interesting_mr_low <- c(top_positive_common_mrs_low,top_positive_enabled_negative_disabled_mrs_low)
-interesting_mr_low_df <- mrs_low_df[mrs_low_df$MR %in% interesting_mr_low,]
-interesting_mr_low_df <- interesting_mr_low_df[order(interesting_mr_low_df$Median_INV_Disabled,decreasing=T),]
-write.table(interesting_mr_low_df,"../Results/Paper_Text/All_MRS_INV_Low_Supplementary_Table_S7d.csv",row.names=F,col.names=T,sep="&", quote=F)
-
-positive_mrs_inv_low_activity_matrix <- mrs_inv_low_activity_matrix[top_positive_common_mrs_low,]
-nepd_mrs_inv_low_activity_matrix <- mrs_inv_low_activity_matrix[top_positive_enabled_negative_disabled_mrs_low,]
-imp_mr_low_for_overexpression_analysis <- rownames(positive_mrs_inv_low_activity_matrix)
-write.table(imp_mr_low_for_overexpression_analysis,"../Results/Paper_Text/All_MRS_INV_Low_Important.csv",row.names=F, col.names=F, quote=F)
-
-
-colcol <- matrix(0,nrow=length(all_cancers),ncol=1)
-colcol[c(1:length(INV_enabled)),1] <- "#FDB100"
-colcol[c((length(INV_enabled)+1):length(all_cancers)),1] <- "#660066"
-
-#Figure 4D
-#====================================================================================
-pdf("../Results/Paper_Figures/Figure4/Common_TopMRs_Activity_INV_Low_Figure_4D.pdf",height = 10, width=14, pointsize = 12)
-p3 <- heatmap.3(positive_mrs_inv_low_activity_matrix, Rowv = FALSE, Colv=FALSE, col = bluered(100), scale="none", main= "Median Activity of MRs specific to INV Low Phenotype for 12 cancers in INV High samples",
-                dendrogram = "none", key = TRUE, density.info = "none", KeyValueName = "Activity Value", ColSideColors = colcol, ColSideColorsSize = 2,
-                margins = c(6,6), useRaster = FALSE, cexRow = 0.65, cexCol = 1.5, cellnote = ifelse(positive_mrs_inv_low_activity_matrix>=0,"+","-"), notecex = 1.0, notecol = "black")
-dev.off()
-
-#Plot 5B
-#######################################################################################
-hc.rows <- hclust(dist(nepd_mrs_inv_low_activity_matrix),method='ward.D2')
-colcol <- matrix(0,nrow=length(all_cancers),ncol=2)
-colnames(colcol) <- c("Enabled/Disabled","INV High")
-colcol[c(1:length(INV_enabled)),1] <- "#FDB100"
-colcol[c((length(INV_enabled)+1):length(all_cancers)),1] <- "#660066"
-colcol[c(1:14),2] <- "green"
-
-pdf("../Results/Paper_Figures/Figure5/Different_TopMRs_Activity_INV_Low_Figure_5B.pdf",height = 10, width=12, pointsize = 12)
-par(bg="white")
-par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=1.0)
-heatmap.3(nepd_mrs_inv_low_activity_matrix[hc.rows$order,], Rowv = FALSE, Colv=FALSE, col = bluered(100), scale="none", main= "Median Activity of INV Low MRs different between INV Enabled & INV Disabled cancers",
-          dendrogram = "none", key = TRUE, density.info = "none", KeyValueName = "Activity Value", ColSideColors = colcol, ColSideColorsSize = 3,
-          margins = c(6,6), useRaster = FALSE, cexRow = 1.5, cexCol = 1.5, cellnote = ifelse(nepd_mrs_inv_low_activity_matrix[hc.rows$order,]<0.0,"-","+"), notecex = 2, notecol = "black")
-dev.off()
-
-#########################################################################################################################
-
+#Perform downstream GO Term enrichment and pathway enrichment for INV High and INV Low specific MRs
 
 #Make figures for downstream enrichment analysis (Supp 6A, 6B)
 ############################################################################################################
