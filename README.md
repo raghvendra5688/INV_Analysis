@@ -8,9 +8,9 @@ The data used for all the experiments is also available at: Mall, Raghvendra (20
 
 #Data should be downloaded and all its content should be added to the 'Data' folder within main ICR_Analysis repository for running R scripts.
 
-In the Data/Others/ folder, please gunzip the me_net_full.Rdata.gz file.
+In the Data/Others/ folder, please unzip the me_net_full.Rdata.gz file.
 
-In the Data/PRECOG/ folder, please put the es_list1.rds and es_list2.rds files for performing the validation on PRECOG repository.
+In the Data/PRECOG/ folder, please put the es_list1.rds and es_list2.rds files (where are these files present/how do we get the said files?) for performing the validation on PRECOG repository.
 
 Run the misc_figures.R in scripts/ folder for validation results on the PRECOG repository.
 
