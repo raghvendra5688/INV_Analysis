@@ -234,7 +234,7 @@ final_common_mrs_enabled_activity_matrix <- common_mrs_enabled_activity_matrix[f
 pdf("../Results/Paper_Figures/Figure4/Common_TopMRs_Activity_INV_Figure_4A.pdf",height = 12, width=14, pointsize = 11)
 par(bg="white")
 par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=1.5)
-p1 <- heatmap.3(final_common_mrs_enabled_activity_matrix, Rowv = TRUE, Colv=, col = bluered(100), scale="none", main= "Median Activity of Common MRs in INV Enabled Cancers", # (>=4 out of 8)",
+p1 <- heatmap.3(final_common_mrs_enabled_activity_matrix, Rowv = TRUE, Colv=F, col = bluered(100), scale="none", main= "Median Activity of Common MRs in INV Enabled Cancers", # (>=4 out of 8)",
                 dendrogram = "both", key = TRUE, density.info = "none", KeyValueName = "Activity Value", ColSideColors = colcol, ColSideColorsSize = 2,
                 margins = c(6,6), useRaster = FALSE, cexRow = 1.0, cexCol = 1.5, cellnote = ifelse(final_common_mrs_enabled_activity_matrix>0,"+","-"), notecex = 1, notecol = "black")
 dev.off()
