@@ -1,0 +1,3 @@
+p-value	q-value	complex_name	source	members_input_overlap	members_input_overlap_geneids	size	effective_size
+0.000130953819471	0.000261907638943	B-WICH:rDNA Promoter:KAT2B:KAT2A:EP300	Reactome	TAF1C; KAT2A; TAF1D	2648; 9013; 79101	29	26
+0.00216990133148	0.00216990133148	Spliceosome	CORUM	RBM39; DDX39B; PAXBP1; DDX17	7919; 9584; 10521; 94104	143	143

@@ -17,7 +17,7 @@ source('get_functions.R')
 
 #Load mechanistic network
 #======================================================================================
-load('../Data/Others/me_net_full.Rdata')
+load(gzfile('../Data/Others/me_net_full.Rdata.gz'))
 
 #Load the RNASeq data
 #=======================================================================================

@@ -26,6 +26,7 @@ library(plotly)
 library(processx)
 library(ggpubr)
 library(grImport2)
+library(func2vis)
 #library(clusterProfiler)
 library(magrittr)
 library(msigdbr)
@@ -302,13 +303,13 @@ enabled_activity_df$TopMR <- as.character(as.vector(enabled_activity_df$TopMR))
 enabled_activity_df$Phenotype <- as.character(as.vector(enabled_activity_df$Phenotype))
 enabled_activity_df$Activity_Value <- as.numeric(as.vector(enabled_activity_df$Activity_Value))
 
-supp_p3 <- ggplot(data = enabled_activity_df, aes(x=Cancer, y=Activity_Value)) +  
+supp_p5 <- ggplot(data = enabled_activity_df, aes(x=Cancer, y=Activity_Value)) +  
   geom_boxplot(aes(fill=Phenotype)) + facet_wrap( ~ TopMR, nrow=7, ncol=10) + xlab("Cancer") + ylab("Activity Value") +
   geom_point(aes(y=Activity_Value, group=Phenotype), size=0.01, position = position_dodge(width=0.75))+
   guides(fill=guide_legend(title="Phenotype")) + scale_fill_manual(values=c("red","blue")) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + theme(axis.text.x = element_text(angle = -90)) +
   ggtitle("Activities of Top MRs of specific to INV Low in INV Enabled Cancers (>=5 out of 10)") + theme(text = element_text(size=12)) + theme(plot.title = element_text(hjust = 0.5))
-ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_5.jpg",plot = supp_p3, device = jpeg(), width = 14, height=12, units = "in", dpi = 300)
+ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_5.jpg",plot = supp_p5, device = jpeg(), width = 14, height=12, units = "in", dpi = 300)
 dev.off()
 
 inv_enabled_median_comparison <- inv_enabled_median_comparison[order(inv_enabled_median_comparison$FC_Median,decreasing = T),]
@@ -330,80 +331,96 @@ write.table(rownames(D),"../Results/Paper_Text/Background_genes.csv", row.names=
 
 #Make figures for downstream enrichment analysis (Supp 6A, 6B)
 ############################################################################################################
-inv_high_goterms_df <- read.table("../Results/Paper_Text/Final_Enriched_GOTerms_INV_High.csv",header=TRUE,sep="\t")
+inv_high_goterms_df <- read.table("../Results/Paper_Text/Enriched_GOTerms_INV_High.csv",header=TRUE,sep="\t")
 inv_high_goterms_df$generatio <- unlist(lapply(strsplit(as.character(inv_high_goterms_df$members_input_overlap_geneids),split="; "), length))/inv_high_goterms_df$size
-temp_df <- inv_high_goterms_df[-log10(inv_high_goterms_df$p.value)>50,]
+inv_high_case_vs_control <- data.frame(gene=inv_high_specific_mrs,fc=rep(2,length(inv_high_specific_mrs)))
+final_inv_high_goterms_df <- clean_go_terms(df_case_vs_ctrl = inv_high_case_vs_control, df_goterms = inv_high_goterms_df)
 
-#Supplementary Figure S7a
-supp_p7a <- ggplot(inv_high_goterms_df,aes(x=100*generatio,y=-log10(p.value), shape=term_category)) + geom_point(aes(color=as.factor(term_level))) + 
+temp_df <- final_inv_high_goterms_df[-log10(final_inv_high_goterms_df$p.value)>35,]
+
+#Supplementary Figure S6a
+supp_p6a <- ggplot(final_inv_high_goterms_df,aes(x=100*generatio,y=-log10(p.value), shape=term_category)) + geom_point(aes(color=as.factor(term_level))) + 
   xlab("Percentage of MRs in each GO Term") + ylab("-log10(Pvalue)") + scale_shape_manual(name = "GO Terms", values = 1:nlevels(as.factor(inv_high_goterms_df$term_category))) +
   scale_color_manual(name = "Term Level", values =  c("grey","violet","orange")) +
-  geom_hline(yintercept=c(0,25,50), color=c("black","blue","red")) + geom_vline(xintercept = 0) + 
+  geom_hline(yintercept=c(1,35,50), color=c("black","blue","red")) + geom_vline(xintercept = 0) + 
   theme_minimal() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + xlim(c(0.0,100))+
   geom_text(aes(x=100*generatio,y=-log10(p.value),label=term_name),
             data=temp_df,
             hjust = 0, vjust = 0, nudge_x = 0.025, angle = 0,
             size = 3, check_overlap = T) +
   ggtitle("Enriched GO Terms for INV High Phenotype") + theme(text = element_text(size=14)) + theme(plot.title = element_text(hjust = 0.5))
-ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_6A.jpg",plot = supp_p7a, device = jpeg(), width = 10, height=10, units = "in", dpi = 300)
+ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_6A.jpg",plot = supp_p6a, device = jpeg(), width = 10, height=10, units = "in", dpi = 300)
 dev.off()
 
-##################
-inv_low_goterms_df <- read.table("../Results/Paper_Text/Final_Enriched_GOTerms_INV_Low.csv",header=TRUE,sep="\t")
+###############################################################################
+inv_low_goterms_df <- read.table("../Results/Paper_Text/Enriched_GOTerms_INV_Low.csv",header=TRUE,sep="\t")
 inv_low_goterms_df$generatio <- unlist(lapply(strsplit(as.character(inv_low_goterms_df$members_input_overlap_geneids),split="; "), length))/inv_low_goterms_df$size
-temp_df <- inv_low_goterms_df[-log10(inv_low_goterms_df$p.value)>30,]
+inv_low_case_vs_control <- data.frame(gene=inv_low_specific_mrs,fc=rep(-1,length(inv_low_specific_mrs)))
+final_inv_low_goterms_df <- clean_go_terms(df_case_vs_ctrl = inv_low_case_vs_control, df_goterms = inv_low_goterms_df)
+temp_df <- inv_low_goterms_df[-log10(inv_low_goterms_df$p.value)>20,]
 
 #Supplementary Figure S7b
-supp_p7b <- ggplot(inv_low_goterms_df,aes(x=100*generatio,y=-log10(p.value), shape=term_category)) + geom_point(aes(color=as.factor(term_level))) + 
-  xlab("Percentage of MRs in each GO Term") + ylab("-log10(Pvalue)") + scale_shape_manual(name = "GO Terms", values = 1:nlevels(as.factor(inv_low_goterms_df$term_category))) +
+supp_p6b <- ggplot(inv_low_goterms_df,aes(x=100*generatio,y=-log10(p.value), shape=term_category)) + 
+  geom_point(aes(color=as.factor(term_level))) + 
+  xlab("Percentage of MRs in each GO Term") + ylab("-log10(Pvalue)") + 
+  scale_shape_manual(name = "GO Terms", values = 1:nlevels(as.factor(inv_low_goterms_df$term_category))) +
   scale_color_manual(name = "Term Level", values =  c("grey","violet","orange")) +
-  geom_hline(yintercept=c(0,25,50), color=c("black","blue","red")) + geom_vline(xintercept = 0) + 
+  geom_hline(yintercept=c(0,20,30), color=c("black","blue","red")) + geom_vline(xintercept = 0) + 
   theme_minimal() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
   geom_text(aes(x=100*generatio,y=-log10(p.value),label=term_name),
             data=temp_df,
             hjust = 0, vjust = 0, nudge_x = 0.025, angle = 0,
             size = 3, check_overlap = T) +
-  coord_cartesian(xlim =c(0, 80), ylim = c(0, 70)) +
+  coord_cartesian(xlim =c(0, 80), ylim = c(0, 30)) +
   ggtitle("Enriched GO Terms for INV Low Phenotype") + theme(text = element_text(size=14)) + theme(plot.title = element_text(hjust = 0.5))
-ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_6B.jpg",plot = supp_p7b, device = jpeg(), width = 10, height=10, units = "in", dpi = 300)
+ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_6B.jpg",plot = supp_p6b, device = jpeg(), width = 10, height=10, units = "in", dpi = 300)
 dev.off()
 
-#Make Figure 6A_2
+#Make Figure 4B
 #===========================================================================================================
 colors <- c('#3cb44b', '#4363d8', '#f58231', '#911eb4', '#f032e6', '#46f0f0' , '#bcf60c', '#a9a9a9', '#e6194b', '#ffe119', '#ffe119', '#e6beff')
-inv_low_pathways_df <- read.table("../Results/Paper_Text/Final_Enriched_Pathways_INV_Low.csv",header=TRUE,sep="\t")
-inv_low_pathways_df$Description <- as.character(as.vector(inv_low_pathways_df$Description))
-inv_low_pathways_df$GeneRatio <- as.character(as.vector(inv_low_pathways_df$GeneRatio))
-inv_low_pathways_df$genes <- as.character(as.vector(inv_low_pathways_df$genes))
-inv_low_pathways_df$Description <- paste0(inv_low_pathways_df$Description," [",inv_low_pathways_df$GeneRatio,"] ")
-inv_low_pathways_df <- inv_low_pathways_df[order(inv_low_pathways_df$generatio),]
-p5 <- ggplot(data=inv_low_pathways_df,aes(x=generatio,y=reorder(Description,generatio),size=-log10(pvalue)))+
-  geom_point(aes(color=-log10(pvalue)))+xlab("Gene Ratio") + ylab("Enriched Pathways") +  scale_color_continuous(name="-log10(P.adjust)", low="blue", high="red", guide=guide_colorbar(reverse=TRUE))+
+inv_low_pathways_df <- read.table("../Results/Paper_Text/Enriched_Pathways_INV_Low.csv", header=T, sep="\t")
+final_inv_low_pathways_df <- clean_pathways(df_case_vs_ctrl = inv_low_case_vs_control, df_pathway = inv_low_pathways_df)
+write.table(final_inv_low_pathways_df,"../Results/Paper_Text/Supplementary_Table_S5_Final_Enriched_INV_Low_Pathways.csv",row.names=F, col.names=T, quote=F, sep="\t")
+
+final_inv_low_pathways_df$pathway <- as.character(as.vector(final_inv_low_pathways_df$pathway))
+final_inv_low_pathways_df$Generatio <- paste0(final_inv_low_pathways_df$genes_down,"/",final_inv_low_pathways_df$effective_size)
+final_inv_low_pathways_df$generatio <- final_inv_low_pathways_df$genes_down/final_inv_low_pathways_df$effective_size
+final_inv_low_pathways_df$Description <- paste0(final_inv_low_pathways_df$pathway,' [',final_inv_low_pathways_df$Generatio,']')
+
+final_inv_low_pathways_df <- final_inv_low_pathways_df[order(final_inv_low_pathways_df$generatio),]
+p5 <- ggplot(data=final_inv_low_pathways_df,aes(x=generatio,y=reorder(Description,generatio),size=-log10(q.value)))+
+  geom_point(aes(color=-log10(q.value)))+xlab("Gene Ratio") + ylab("Enriched Pathways") +  
+  scale_color_continuous(name="-log10(P.adjust)", low="blue", high="red", guide=guide_colorbar(reverse=TRUE))+
   scale_size_continuous(name = "-log10(P.adjust)")+   guides(color=guide_legend(), size = guide_legend())+
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  #theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),plot.background=element_rect(fill = "black"),axis.line = element_line(colour = "white"),
-  #  panel.background = element_rect(fill = 'black'),legend.background = element_rect(fill = "black", color = NA),
-  #  legend.key = element_rect(color = "gray", fill = "black"), legend.title = element_text(color = "white"), legend.text = element_text(color = "white"))+
-  ggtitle("Enriched Pathways for INV Low Phenotype") + theme(text = element_text(size=16,color="black")) + theme(axis.text = element_text(size=14, color="black")) + theme(plot.title = element_text(hjust = 0.5,color="black")) +
-  theme(axis.text.y=element_text(color=colors[(inv_low_pathways_df$clusters)]))
-ggsave(filename = "../Results/Paper_Figures/Figure6/Enriched_Pathways_INV_Low_Figure_6A_2.pdf",plot=p5,device=pdf(), height=12, width=12, units="in", dpi=300)
+  ggtitle("Enriched Pathways for INV Low Phenotype") + 
+  theme(text = element_text(size=14,color="black")) + theme(axis.text = element_text(size=14, color="black")) + 
+  theme(plot.title = element_text(hjust = 0.5,color="black")) +
+  theme(axis.text.y=element_text(color=colors[(final_inv_low_pathways_df$clusters)]))
+ggsave(filename = "../Results/Paper_Figures/Figure4/Enriched_Pathways_INV_Low_Figure_4B.pdf",plot=p5,device=pdf(), height=10, width=10, units="in", dpi=300)
 dev.off()
 
-#Supplementary Figure S7A
+#Supplementary Figure 4C
 #================================================================================================================
-inv_high_pathways_df <- read.table("../Results/Paper_Text/Final_Enriched_Pathways_INV_High.csv",header=TRUE,sep="\t")
-inv_high_pathways_df$Description <- as.character(as.vector(inv_high_pathways_df$Description))
-inv_high_pathways_df$GeneRatio <- as.character(as.vector(inv_high_pathways_df$GeneRatio))
-inv_high_pathways_df$Description <- paste0(inv_high_pathways_df$Description," [",inv_high_pathways_df$GeneRatio,"] ")
-inv_high_pathways_df$genes <- as.character(as.vector(inv_high_pathways_df$genes))
-inv_high_pathways_df <- inv_high_pathways_df[order(inv_high_pathways_df$generatio),]
-supp_p8a <- ggplot(data=inv_high_pathways_df,aes(x=generatio,y=reorder(Description,generatio),size=-log10(pvalue)))+
-  geom_point(aes(color=-log10(pvalue)))+xlab("Gene Ratio") + ylab("Enriched Pathways") +  scale_color_continuous(name="-log10(P.adjust)", low="blue", high="red", guide=guide_colorbar(reverse=TRUE))+
+inv_high_pathways_df <- read.table("../Results/Paper_Text/Enriched_Pathways_INV_High.csv",header=TRUE,sep="\t")
+final_inv_high_pathways_df <- clean_pathways(df_case_vs_ctrl = inv_high_case_vs_control, df_pathway = inv_high_pathways_df)
+write.table(final_inv_high_pathways_df,"../Results/Paper_Text/Supplementary_Table_S6_Final_Enriched_Pathways_INV_High.csv",row.names=F, col.names=T, quote=F,sep="\t")
+
+final_inv_high_pathways_df$pathway <- as.character(as.vector(final_inv_high_pathways_df$pathway))
+final_inv_high_pathways_df$Generatio <- paste0(final_inv_high_pathways_df$genes_up,"/",final_inv_high_pathways_df$effective_size)
+final_inv_high_pathways_df$generatio <- final_inv_high_pathways_df$genes_up/final_inv_high_pathways_df$effective_size
+final_inv_high_pathways_df$Description <- paste0(final_inv_high_pathways_df$pathway,' [',final_inv_high_pathways_df$Generatio,']')
+
+final_inv_high_pathways_df <- final_inv_high_pathways_df[order(final_inv_high_pathways_df$generatio),]
+p6 <- ggplot(data=final_inv_high_pathways_df,aes(x=generatio,y=reorder(Description,generatio),size=-log10(q.value)))+
+  geom_point(aes(color=-log10(q.value)))+xlab("Gene Ratio") + ylab("Enriched Pathways") +  
+  scale_color_continuous(name="-log10(P.adjust)", low="blue", high="red", guide=guide_colorbar(reverse=TRUE))+
   scale_size_continuous(name = "-log10(P.adjust)")+ guides(color=guide_legend(), size = guide_legend())+
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  ggtitle("Enriched Pathways for INV High Phenotype") + theme(text = element_text(size=10)) + theme(plot.title = element_text(hjust = 0.5)) +
-  theme(axis.text.y=element_text(color=colors[as.factor(inv_high_pathways_df$clusters)]))
-ggsave(filename = "../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_7A.jpg",plot=supp_p8a,device=jpeg(), height=20, width=12, units="in", dpi=300)
+  ggtitle("Enriched Pathways for INV High Phenotype") + theme(text = element_text(size=14)) + theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y=element_text(color=colors[as.factor(final_inv_high_pathways_df$clusters)]))
+ggsave(filename = "../Results/Paper_Figures/Figure4/Enriched_Pathways_INV_High_Figure_4D.pdf",plot=p6,device=jpeg(), height=12, width=12, units="in", dpi=300)
 dev.off()
 
 #Supplementary Figure S8B
@@ -412,66 +429,48 @@ library(circlize)
 col_fun = colorRamp2(c(-0.1, 0, 0.1), c("blue", "white", "red"))
 col_fun(seq(-3, 3))
 
-inv_high_pathways_df <- inv_high_pathways_df[order(inv_high_pathways_df$generatio,decreasing = T),]
-inv_high_pathways_gene_involved <- matrix(0,nrow=nrow(inv_high_pathways_df),ncol=length(rownames(positive_mrs_inv_high_activity_matrix)))
-rownames(inv_high_pathways_gene_involved) <- inv_high_pathways_df$Description
+#Figure 4C
+#================================================================================================================
+positive_mrs_inv_high_activity_matrix <- common_mrs_enabled_activity_matrix[inv_high_specific_mrs,]
+rev_inv_high_pathways_df <- final_inv_high_pathways_df[order(final_inv_high_pathways_df$generatio,decreasing = T),]
+inv_high_pathways_gene_involved <- matrix(0,nrow=nrow(rev_inv_high_pathways_df),ncol=length(rownames(positive_mrs_inv_high_activity_matrix)))
+rownames(inv_high_pathways_gene_involved) <- rev_inv_high_pathways_df$Description
 colnames(inv_high_pathways_gene_involved) <- rownames(positive_mrs_inv_high_activity_matrix)
-
-for (i in 1:nrow(inv_high_pathways_df))
+for (i in 1:nrow(rev_inv_high_pathways_df))
 {
-  genes_involved <- unlist(strsplit(inv_high_pathways_df[i,]$genes,split="; "))
+  genes_involved <- unlist(strsplit(rev_inv_high_pathways_df[i,]$members_input_overlap,split="; "))
   median_activity_scores <- rowMedians(positive_mrs_inv_high_activity_matrix[genes_involved,])
   inv_high_pathways_gene_involved[i,genes_involved] <- median_activity_scores
 }
-inv_high_pathways_gene_involved <- inv_high_pathways_gene_involved[,which(colSums(inv_high_pathways_gene_involved)>0)]
 
-jpeg("../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_7B.jpg",height = 900, width=1500, units="px",pointsize = 12)
-Heatmap(inv_high_pathways_gene_involved,cluster_rows = FALSE, cluster_columns = FALSE, col=col_fun, row_names_side = "left", 
-        name="Median Activity", row_names_gp = gpar(fontsize = 8, col=colors[as.factor(inv_high_pathways_df$clusters)]), column_names_gp = gpar(fontsize = 8), 
+#Make the Sankey plot
+inv_high_pathways_gene_involved_to_consider <- inv_high_pathways_gene_involved[,which(colSums(inv_high_pathways_gene_involved)>0)]
+
+#Figure S7
+################################################################################################
+jpeg("../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_7.jpg",height = 800, width=1200, units="px",pointsize = 12, res = 0.75)
+op <- par(oma=c(10,7,1,1))
+Heatmap(inv_high_pathways_gene_involved_to_consider,cluster_rows = FALSE, cluster_columns = FALSE, col=col_fun, row_names_side = "left", 
+        name="Activity", row_names_gp = gpar(fontsize = 8, col=colors[as.factor(rev_inv_high_pathways_df$clusters)]), column_names_gp = gpar(fontsize = 10), 
         column_title = "Median Activity of MRs in Enriched Pathways specific to INV High")
 dev.off()
 
-#Figure 6A_1
-#================================================================================================================
-rev_inv_low_pathways_df <- inv_low_pathways_df[order(inv_low_pathways_df$generatio,decreasing = T),]
-inv_low_pathways_gene_involved <- matrix(0,nrow=nrow(rev_inv_low_pathways_df),ncol=length(rownames(positive_mrs_inv_low_activity_matrix)))
-rownames(inv_low_pathways_gene_involved) <- rev_inv_low_pathways_df$Description
-colnames(inv_low_pathways_gene_involved) <- rownames(positive_mrs_inv_low_activity_matrix)
-for (i in 1:nrow(rev_inv_low_pathways_df))
-{
-  genes_involved <- unlist(strsplit(rev_inv_low_pathways_df[i,]$genes,split="; "))
-  median_activity_scores <- rowMedians(positive_mrs_inv_low_activity_matrix[genes_involved,])
-  inv_low_pathways_gene_involved[i,genes_involved] <- median_activity_scores
-}
-
-#Make the Sankey plot
-inv_low_pathways_gene_involved_to_consider <- inv_low_pathways_gene_involved[,which(colSums(inv_low_pathways_gene_involved)>0)]
-
-#Figure S7C
-################################################################################################
-jpeg("../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_7C.jpg",height = 800, width=1200, units="px",pointsize = 12, res = 0.75)
-op <- par(oma=c(10,7,1,1))
-Heatmap(inv_low_pathways_gene_involved_to_consider,cluster_rows = FALSE, cluster_columns = FALSE, col=col_fun, row_names_side = "left", 
-        name="Activity", row_names_gp = gpar(fontsize = 8, col=colors[as.factor(rev_inv_low_pathways_df$clusters)]), column_names_gp = gpar(fontsize = 10), 
-        column_title = "Median Activity of MRs in Enriched Pathways specific to INV Low")
-dev.off()
-
-INV_Low <- list()
-INV_Low$nodes <- data.frame(name = c(colnames(inv_low_pathways_gene_involved_to_consider),rownames(inv_low_pathways_gene_involved_to_consider)))
-nodesgroup <- c(rep("white",length(colnames(inv_low_pathways_gene_involved_to_consider))),colors[rev_inv_low_pathways_df$clusters])
-INV_Low$nodes$nodesgroup <- nodesgroup
+INV_High <- list()
+INV_High$nodes <- data.frame(name = c(colnames(inv_high_pathways_gene_involved_to_consider),rownames(inv_high_pathways_gene_involved_to_consider)))
+nodesgroup <- c(rep("white",length(colnames(inv_high_pathways_gene_involved_to_consider))),colors[rev_inv_high_pathways_df$clusters])
+INV_High$nodes$nodesgroup <- nodesgroup
 edgelist <- NULL
-for (i in 1:nrow(inv_low_pathways_gene_involved_to_consider))
+for (i in 1:nrow(inv_high_pathways_gene_involved_to_consider))
 {
-  for (j in 1:ncol(inv_low_pathways_gene_involved_to_consider))
+  for (j in 1:ncol(inv_high_pathways_gene_involved_to_consider))
   {
-    pathway <- rownames(inv_low_pathways_gene_involved_to_consider)[i]
-    mr <- colnames(inv_low_pathways_gene_involved_to_consider)[j]
-    if (inv_low_pathways_gene_involved_to_consider[pathway,mr]>0)
+    pathway <- rownames(inv_high_pathways_gene_involved_to_consider)[i]
+    mr <- colnames(inv_high_pathways_gene_involved_to_consider)[j]
+    if (inv_high_pathways_gene_involved_to_consider[pathway,mr]>0)
     {
-      mr_id <- which(INV_Low$nodes$name==mr)-1
-      pathway_id <- which(INV_Low$nodes$name==pathway)-1
-      temp <- cbind(mr_id,pathway_id,abs(inv_low_pathways_gene_involved_to_consider[pathway,mr]),INV_Low$nodes[INV_Low$nodes$name==pathway,"nodesgroup"])
+      mr_id <- which(INV_High$nodes$name==mr)-1
+      pathway_id <- which(INV_High$nodes$name==pathway)-1
+      temp <- cbind(mr_id,pathway_id,abs(inv_high_pathways_gene_involved_to_consider[pathway,mr]),INV_High$nodes[INV_High$nodes$name==pathway,"nodesgroup"])
       edgelist <- rbind(edgelist,temp)
     }
   }
@@ -482,17 +481,17 @@ edgelist$source <- as.numeric(as.vector(edgelist$source))
 edgelist$target <- as.numeric(as.vector(edgelist$target))
 edgelist$value <- as.numeric(as.vector(edgelist$value))
 edgelist$type <- as.factor(as.vector(edgelist$type))
-INV_Low$links <- edgelist
+INV_High$links <- edgelist
 
 # putting in a data.frame might help see problems
 color_scale <- data.frame(
-  range = c(rep("white",length(colnames(inv_low_pathways_gene_involved_to_consider))),colors[rev_inv_low_pathways_df$clusters]),
-  domain = INV_Low$nodes$name,
-  nodes = INV_Low$nodes,
+  range = c(rep("white",length(colnames(inv_high_pathways_gene_involved_to_consider))),colors[rev_inv_high_pathways_df$clusters]),
+  domain = INV_High$nodes$name,
+  nodes = INV_High$nodes,
   stringsAsFactors = FALSE
 )
 
-p_sankey <- sankeyNetwork(Links = INV_Low$links, Nodes = INV_Low$nodes, Source = "source",
+p_sankey <- sankeyNetwork(Links = INV_High$links, Nodes = INV_High$nodes, Source = "source",
                    Target = "target", Value = "value", LinkGroup = "type", NodeID = "name", NodeGroup = "nodesgroup",
                    units = "", fontSize = 14, nodeWidth = 25, iterations=0, fontFamily = "Arial", 
                    colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);")) 
