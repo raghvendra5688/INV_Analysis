@@ -25,9 +25,8 @@ all_mrs <- c(all_hot_mrs,all_cold_mrs)
 
 RGBM_path <- c("../Data/");
 
-inv_prognostic_cancers <- c("BLCA","COAD","LGG","OV","PRAD","PAAD","STAD","LUAD","LUSC","ESCA")
-inv_neutral_cancers <- setdiff(setdiff(setdiff(list.files(RGBM_path),inv_disabled_cancers),inv_enabled_cancers),c("Others","Assembler_Panca_Normalized","ARACNE",
-                                                                                                                  "PanCancer","PRECOG"))
+inv_prognostic_cancers <- c("LGG","KIRP","PAAD","MESO","KIRC","COAD","BLCA","STAD","LUAD","OV")
+inv_neutral_cancers <- setdiff(setdiff(list.files(RGBM_path),inv_prognostic_cancers),c("Others","Assembler_Panca_Normalized","ARACNE","PanCancer","PRECOG","survival_data"))
 
 
 get_activity_matrix_info <- function(counter,sample_ids,cancers,activity_matrix,cancer_info_vector,inv_pheno_info_vector,inv_type_info_vector,inv_type)
@@ -87,12 +86,12 @@ get_activity_matrix_info <- function(counter,sample_ids,cancers,activity_matrix,
   return(output_list)
 }
 
-
 cancers <- inv_neutral_cancers
 cancer_samples <- 0
 for (i in 1:length(cancers))
 {
   cancer_type <- cancers[i]
+  print(paste0("At cancer ",cancer_type))
   #high_indices_table <- read.table(paste0("../Results/",cancer_type,"/Adjacency_Matrix/",cancer_type,"_Full_high_indices.csv"),header=TRUE)
   #low_indices_table <- read.table(paste0("../Results/",cancer_type,"/Adjacency_Matrix/",cancer_type,"_Full_low_indices.csv"),header=TRUE)
   #Load mechanistic network
@@ -155,24 +154,24 @@ color = grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)]
 set.seed(43)
 col=sample(color, n)
 Cancers <- col[as.factor(cancer_info_vector)]
-inv_colors <- c("yellow","green")
+inv_colors <- c("red","blue")
 INV_Clusters <- inv_colors[as.factor(inv_pheno_info_vector)]
-inv_type_colors <- c("#660066","#FDB100","#D3D3D3")
+inv_type_colors <- c("#660066","#FDB100")
 INV_EorD <- inv_type_colors[as.factor(inv_type_info_vector)]
 
 clab=cbind(Cancers,INV_Clusters,INV_EorD)
-rlab = t(c(rep("yellow",length(all_hot_mrs)),rep("green",length(all_cold_mrs))))
+rlab = t(c(rep("red",length(all_hot_mrs)),rep("blue",length(all_cold_mrs))))
 colnames(clab) <- c("Cancers","INV Phenotype","INV Cancer Clusters")
 rownames(rlab) <- "MRs"
 
 #Define custom dist and hclust functions for use with heatmaps
 Activity_Matrix <- as.matrix(Activity_Matrix)
-#2nd column is ICR High vs ICR Low
+#2nd column is INV High vs INV Low
 hc.cols1 <- order(clab[,2],decreasing = T)
 clab1 <- clab[hc.cols1,]
 Activity_Matrix <- Activity_Matrix[,hc.cols1]
 newhc.cols <- NULL
-#3rd column is ICR Enabled, ICR Disabled and ICR Neutral clusters
+#3rd column is INV Prognostic vs INV Neutral clusters
 for (i in 1:length(unique(clab[,2])))
 {
   color_id <- unique(clab[,2])[i]
@@ -211,23 +210,22 @@ hc_row_list <- list(hc.rows.inv_high,hc.rows.inv_low)
 hc_row <- .merge_hclust(hc_row_list)
 
 
-#Main Plotting Function for Figure 7A
+#Main Plotting Function for Figure 5A
 ################################################################################
-pdf("../Results/Paper_Figures/Figure7/Heatmap_All_MRs_Neutral_Cancers_Figure_7A.pdf",height = 13, width=15, pointsize = 14)
+pdf("../Results/Paper_Figures/Figure5/Heatmap_All_MRs_Neutral_Cancers_Figure_5A.pdf",height = 13, width=15, pointsize = 14)
 par(bg="white")
 par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=2.0)
 p1 <- heatmap.3(Activity_Matrix, scale="none", dendrogram="both", margins=c(4,20),
                 Rowv=as.dendrogram(hc_row), Colv=as.dendrogram(hc_col), ColSideColors=clab2, labCol = FALSE,
-                #Rowv=NULL, Colv = NULL, ColSideColors = clab3, labCol = FALSE,
-                key=TRUE, keysize=1.5, labRow=all_mrs, cexRow=0.35, col=colorspace::diverge_hsv(100),RowSideColors=rlab,
+                key=TRUE, keysize=1.5, labRow=all_mrs, cexRow=0.8, col=colorspace::diverge_hsv(100),RowSideColors=rlab,
                 ColSideColorsSize=3, RowSideColorsSize=1, KeyValueName="Activity Value")
 legend("topright",legend=c(unique(cancer_info_vector),"","",unique(inv_type_info_vector),"","",unique(inv_pheno_info_vector)),
-       fill=c(unique(Cancers),"white","white",unique(INV_EorD),"white","white",unique(INV_Clusters)), border=FALSE, bty="n", y.intersp = 0.7, cex=0.8)
+       fill=c(unique(Cancers),"white","white",unique(INV_EorD),"white","white",unique(INV_Clusters)), border=FALSE, bty="n", y.intersp = 0.7, cex=0.7)
 dev.off()
 
 ordered_mrs <- rev(rownames(Activity_Matrix)[p1$rowInd])
-high_ids <- clab2[,2]=="yellow"
-low_ids <- clab2[,2]=="green"
+high_ids <- clab2[,2]=="red"
+low_ids <- clab2[,2]=="blue"
 activity_df <- perform_wilcox_test(Activity_Matrix[ordered_mrs,high_ids],Activity_Matrix[ordered_mrs,low_ids])
 activity_df <- activity_df[,c(2:ncol(activity_df))]
 activity_df$Mean1 <- round(activity_df$Mean1,3)
@@ -236,4 +234,4 @@ activity_df$FC_Mean <- round(activity_df$FC_Mean,3)
 activity_df$Pval <- signif(activity_df$Pval,3)
 activity_df$Padjust <- signif(activity_df$Padjust,3)
 activity_df <- activity_df[order(activity_df$Padjust,decreasing=T),]
-write.table(activity_df,"../Results/Paper_Text/Diff_MRS_Activity_INV_Neutral_Table_S8.csv",row.names=T,col.names=T,quote=F,sep=",")
+write.table(activity_df,"../Results/Paper_Text/Diff_MRS_Activity_INV_Neutral_Table_S7.csv",row.names=T,col.names=T,quote=F,sep=",")
