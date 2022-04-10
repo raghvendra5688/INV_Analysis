@@ -349,7 +349,7 @@ supp_p6a <- ggplot(final_inv_high_goterms_df,aes(x=100*generatio,y=-log10(p.valu
             hjust = 0, vjust = 0, nudge_x = 0.025, angle = 0,
             size = 3, check_overlap = T) +
   ggtitle("Enriched GO Terms for INV High Phenotype") + theme(text = element_text(size=14)) + theme(plot.title = element_text(hjust = 0.5))
-ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_6A.jpg",plot = supp_p6a, device = jpeg(), width = 10, height=10, units = "in", dpi = 300)
+ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_6A.pdf",plot = supp_p6a, device = pdf(), width = 10, height=10, units = "in", dpi = 300)
 dev.off()
 
 ###############################################################################
@@ -373,7 +373,7 @@ supp_p6b <- ggplot(inv_low_goterms_df,aes(x=100*generatio,y=-log10(p.value), sha
             size = 3, check_overlap = T) +
   coord_cartesian(xlim =c(0, 80), ylim = c(0, 30)) +
   ggtitle("Enriched GO Terms for INV Low Phenotype") + theme(text = element_text(size=14)) + theme(plot.title = element_text(hjust = 0.5))
-ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_6B.jpg",plot = supp_p6b, device = jpeg(), width = 10, height=10, units = "in", dpi = 300)
+ggsave(file="../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_6B.pdf",plot = supp_p6b, device = pdf(), width = 10, height=10, units = "in", dpi = 300)
 dev.off()
 
 #Make Figure 4B
@@ -398,7 +398,7 @@ p5 <- ggplot(data=final_inv_low_pathways_df,aes(x=generatio,y=reorder(Descriptio
   theme(text = element_text(size=14,color="black")) + theme(axis.text = element_text(size=14, color="black")) + 
   theme(plot.title = element_text(hjust = 0.5,color="black")) +
   theme(axis.text.y=element_text(color=colors[(final_inv_low_pathways_df$clusters)]))
-ggsave(filename = "../Results/Paper_Figures/Figure4/Enriched_Pathways_INV_Low_Figure_4B.pdf",plot=p5,device=pdf(), height=10, width=10, units="in", dpi=300)
+ggsave(filename = "../Results/Paper_Figures/Figure4/Enriched_Pathways_INV_Low_Figure_4B.pdf",plot=p5,device=pdf(), height=6, width=10, units="in", dpi=300)
 dev.off()
 
 #Supplementary Figure 4C
@@ -412,16 +412,31 @@ final_inv_high_pathways_df$Generatio <- paste0(final_inv_high_pathways_df$genes_
 final_inv_high_pathways_df$generatio <- final_inv_high_pathways_df$genes_up/final_inv_high_pathways_df$effective_size
 final_inv_high_pathways_df$Description <- paste0(final_inv_high_pathways_df$pathway,' [',final_inv_high_pathways_df$Generatio,']')
 
+final_inv_high_pathways_df <- final_inv_high_pathways_df[order(final_inv_high_pathways_df$p.value),]
+top_final_inv_high_pathways_df <- final_inv_high_pathways_df[c(1:30),]
+
+top_final_inv_high_pathways_df <- top_final_inv_high_pathways_df[order(top_final_inv_high_pathways_df$generatio),]
+p6 <- ggplot(data=top_final_inv_high_pathways_df,aes(x=generatio,y=reorder(Description,generatio),size=-log10(q.value)))+
+  geom_point(aes(color=-log10(q.value)))+xlab("Gene Ratio") + ylab("Enriched Pathways") +  
+  scale_color_continuous(name="-log10(P.adjust)", low="blue", high="red", guide=guide_colorbar(reverse=TRUE))+
+  scale_size_continuous(name = "-log10(P.adjust)")+ guides(color=guide_legend(), size = guide_legend())+
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  ggtitle("Enriched Pathways for INV High Phenotype") + theme(text = element_text(size=14)) + theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.y=element_text(color=colors[as.factor(top_final_inv_high_pathways_df$clusters)]))
+ggsave(filename = "../Results/Paper_Figures/Figure4/Enriched_Pathways_INV_High_Figure_4D.pdf",plot=p6,device=jpeg(), height=12, width=12, units="in", dpi=300)
+dev.off()
+
 final_inv_high_pathways_df <- final_inv_high_pathways_df[order(final_inv_high_pathways_df$generatio),]
-p6 <- ggplot(data=final_inv_high_pathways_df,aes(x=generatio,y=reorder(Description,generatio),size=-log10(q.value)))+
+p7 <- ggplot(data=final_inv_high_pathways_df,aes(x=generatio,y=reorder(Description,generatio),size=-log10(q.value)))+
   geom_point(aes(color=-log10(q.value)))+xlab("Gene Ratio") + ylab("Enriched Pathways") +  
   scale_color_continuous(name="-log10(P.adjust)", low="blue", high="red", guide=guide_colorbar(reverse=TRUE))+
   scale_size_continuous(name = "-log10(P.adjust)")+ guides(color=guide_legend(), size = guide_legend())+
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
   ggtitle("Enriched Pathways for INV High Phenotype") + theme(text = element_text(size=14)) + theme(plot.title = element_text(hjust = 0.5)) +
   theme(axis.text.y=element_text(color=colors[as.factor(final_inv_high_pathways_df$clusters)]))
-ggsave(filename = "../Results/Paper_Figures/Figure4/Enriched_Pathways_INV_High_Figure_4D.pdf",plot=p6,device=jpeg(), height=12, width=12, units="in", dpi=300)
+ggsave(filename = "../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_8.pdf",plot=p7,device=pdf(), height=12, width=12, units="in", dpi=300)
 dev.off()
+
 
 #Supplementary Figure S8B
 #=====================================================================================================================
@@ -432,7 +447,7 @@ col_fun(seq(-3, 3))
 #Figure 4C
 #================================================================================================================
 positive_mrs_inv_high_activity_matrix <- common_mrs_enabled_activity_matrix[inv_high_specific_mrs,]
-rev_inv_high_pathways_df <- final_inv_high_pathways_df[order(final_inv_high_pathways_df$generatio,decreasing = T),]
+rev_inv_high_pathways_df <- top_final_inv_high_pathways_df[order(top_final_inv_high_pathways_df$generatio,decreasing = T),]
 inv_high_pathways_gene_involved <- matrix(0,nrow=nrow(rev_inv_high_pathways_df),ncol=length(rownames(positive_mrs_inv_high_activity_matrix)))
 rownames(inv_high_pathways_gene_involved) <- rev_inv_high_pathways_df$Description
 colnames(inv_high_pathways_gene_involved) <- rownames(positive_mrs_inv_high_activity_matrix)
@@ -448,10 +463,10 @@ inv_high_pathways_gene_involved_to_consider <- inv_high_pathways_gene_involved[,
 
 #Figure S7
 ################################################################################################
-jpeg("../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_7.jpg",height = 800, width=1200, units="px",pointsize = 12, res = 0.75)
+pdf("../Results/Paper_Figures/Svgs_Jpgs/Supp_Figure_7.pdf",height = 8, width=12)
 op <- par(oma=c(10,7,1,1))
 Heatmap(inv_high_pathways_gene_involved_to_consider,cluster_rows = FALSE, cluster_columns = FALSE, col=col_fun, row_names_side = "left", 
-        name="Activity", row_names_gp = gpar(fontsize = 8, col=colors[as.factor(rev_inv_high_pathways_df$clusters)]), column_names_gp = gpar(fontsize = 10), 
+        name="Activity", row_names_gp = gpar(fontsize = 10, col=colors[as.factor(rev_inv_high_pathways_df$clusters)]), column_names_gp = gpar(fontsize = 10), 
         column_title = "Median Activity of MRs in Enriched Pathways specific to INV High")
 dev.off()
 
@@ -494,7 +509,9 @@ color_scale <- data.frame(
 p_sankey <- sankeyNetwork(Links = INV_High$links, Nodes = INV_High$nodes, Source = "source",
                    Target = "target", Value = "value", LinkGroup = "type", NodeID = "name", NodeGroup = "nodesgroup",
                    units = "", fontSize = 14, nodeWidth = 25, iterations=0, fontFamily = "Arial", 
-                   colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);")) 
+                   colourScale = JS('d3.scaleOrdinal().domain(["Fristående","Nästan_öppet","Halvöppet","Slutet"])
+                                    .range(["#EDF8E9","#BAE4B3","#74C476","#238B45"])'))
+                   #colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);")) 
 #widget2png(p, "../Results/Paper_Figures/Svgs_Jpgs/Sankey_Plot_INV_Low_Figure_6A_1.png")
 
 
