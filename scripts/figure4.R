@@ -509,8 +509,13 @@ color_scale <- data.frame(
 p_sankey <- sankeyNetwork(Links = INV_High$links, Nodes = INV_High$nodes, Source = "source",
                    Target = "target", Value = "value", LinkGroup = "type", NodeID = "name", NodeGroup = "nodesgroup",
                    units = "", fontSize = 14, nodeWidth = 25, iterations=0, fontFamily = "Arial", 
+<<<<<<< HEAD
                    colourScale = JS('d3.scaleOrdinal().domain(["Fristående","Nästan_öppet","Halvöppet"])
                                     .range(["#EDF8E9","#BAE4B3","#74C476"])'))
+=======
+                   colourScale = JS('d3.scaleOrdinal().domain(["Fristående","Nästan_öppet","Halvöppet","Slutet"])
+                                    .range(["#EDF8E9","#BAE4B3","#74C476","#238B45"])'))
+>>>>>>> 686c8ab687c42f7129469caff3a2dae3da6e9efa
                    #colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);")) 
 #widget2png(p, "../Results/Paper_Figures/Svgs_Jpgs/Sankey_Plot_INV_Low_Figure_6A_1.png")
 
