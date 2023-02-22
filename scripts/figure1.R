@@ -370,16 +370,3 @@ ggsave(filename = "Results/PanCancer/All_Cancers_of_Interest_Boxplot_Invasivenes
 dev.off()
 
 
-© 2022 GitHub, Inc.
-Terms
-Privacy
-Security
-Status
-Docs
-Contact GitHub
-Pricing
-API
-Training
-Blog
-About
-Loading complete
