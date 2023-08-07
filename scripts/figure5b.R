@@ -11,7 +11,6 @@ library(gprofiler2)
 library(Biobase)
 
 #Load latest version of heatmap.3 function
-source_url("https://raw.githubusercontent.com/obigriffith/biostar-tutorials/master/Heatmaps/heatmap.3.R")
 
 setwd('../scripts/')
 
@@ -381,57 +380,87 @@ activity_df <- activity_df[order(activity_df$Padjust,decreasing=T),]
 write.table(activity_df,"../Results/Paper_Text/Diff_MRS_Activity_PRECOG_Table_S8.csv",row.names=T,col.names=T,quote=F,sep=",")
 
 # #Make the heatmap for the set of deferentially active MRs identified for each cancer (INV-Low vs INV-High) on PRECOG datasets
-# ###########################################################################################################################
-# precog_cancers <- c("BLCA","BRCA","COAD","GBM","HNSC","LUAD","OV","SKCM")
-# inputpath <- "../Data/PRECOG/"
-# 
-# for (i in 1:length(precog_cancers))
-# {
-#   cancer_type <- precog_cancers[i]
-#   load(paste0(inputpath,cancer_type,"/",cancer_type,"_Full_Activity_matrix_FGSEA.Rdata"))
-#   load(paste0(inputpath,cancer_type,"/",cancer_type,"_Full_TopMR_Info_FGSEA_BC_NES_1.Rdata"))
-#   load(paste0(inputpath,cancer_type,"/",cancer_type,"_Full_Activity_matrix_FGSEA.Rdata"))
-#   table_indices <- read.table(paste0(inputpath,cancer_type,"/",cancer_type,"_ICR_Info.csv"),header=FALSE,sep=",")
-#   table_indices$V2 <- as.character(as.vector(table_indices$V2))
-#   high_index_last <- sum(table_indices$V2=="ICR High")
-#   low_index_last <- nrow(table_indices)
-#   high_indices <- table_indices[table_indices$V2=="ICR High",]$V1
-#   low_indices <- table_indices[table_indices$V2=="ICR Low",]$V1
-#   
-#   amat_to_use <- amat  
-#   amat_to_use[amat_to_use>0] <- amat_to_use[amat_to_use>0]/max(amat_to_use)
-#   amat_to_use[amat_to_use<0] <- amat_to_use[amat_to_use<0]/abs(min(amat_to_use))
-#   samples <- dim(amat_to_use)[2]
-#   
-#   all_mrs_present <- topmr_info[topmr_info$pathway %in% rownames(amat_to_use),]$pathway
-#   
-#   #Get the activity matrix for these differential MRs per cancer with the phenotype information
-#   new_mr_activity_matrix <- as.matrix(amat[all_mrs_present,c(high_indices,low_indices)])
-#   rownames(new_mr_activity_matrix)
-#   colnames(new_mr_activity_matrix) <- NULL
-#   
-#   colcol <- matrix(0,nrow=ncol(new_mr_activity_matrix),ncol=1)
-#   high_ids <- c(1:length(high_indices));
-#   low_ids <- c((length(high_indices)+1):length(colcol))
-#   colcol[high_ids,1] <- "yellow"
-#   colcol[low_ids,1] <- "green"
-#   colnames(colcol) <- "ICR Phenotype"
-#   hc_high.cols <- hclust(dist(t(new_mr_activity_matrix[,high_ids])),method='ward.D')
-#   hc_low.cols <- hclust(dist(t(new_mr_activity_matrix[,low_ids])),method='ward.D')
-#   hc.cols <- c(hc_high.cols$order,length(high_ids)+hc_low.cols$order);
-#   hc.rows <- hclust(dist(new_mr_activity_matrix),method='ward.D')
-#   
-#   #Make the plot of activity matrix clustered by hot vs cold immune response
-#   #=================================================================================================
-#   pdf(paste0("../Results/",cancer_type,"/Images/",cancer_type,"_PRECOG_Activity_Matrix.pdf"),pointsize=9,height=9,width=15)
-#   par(bg="white")
-#   par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=2.0, cex = 2.5)
-#   new_mr_activity_matrix[new_mr_activity_matrix <= quantile(new_mr_activity_matrix, 0.05)] <- quantile(new_mr_activity_matrix, 0.05)
-#   new_mr_activity_matrix[new_mr_activity_matrix >= quantile(new_mr_activity_matrix, 0.95)] <- quantile(new_mr_activity_matrix, 0.95)
-#   heatmap.3(new_mr_activity_matrix[hc.rows$order,hc.cols], Rowv=TRUE, Colv=FALSE, col = bluered(100), scale="none", main= paste0("Master Regulator Activity for ",cancer_type," (PRECOG)"),
-#             xlab = "TCGA Samples", ylab="Top MRs", dendrogram = "row", key = TRUE, density.info = "none", 
-#             KeyValueName = "Activity Value", ColSideColors = colcol, ColSideColorsSize=2,
-#             margins = c(6,6), useRaster = FALSE, cexRow = 0.6, cexCol = 2.0)
-#   dev.off()
-# }
+###########################################################################################################################
+precog_cancers <- c("BLCA","BRCA","COAD","GBM","HNSC","LUAD","OV","SKCM")
+inputpath <- "../Data/PRECOG/"
 
+present_mrs <- list()
+absent_mrs <- list()
+differntial_mrs <- list()
+for (i in 1:length(precog_cancers))
+{
+  cancer_type <- precog_cancers[i]
+  load(paste0(inputpath,cancer_type,"/",cancer_type,"_Full_Activity_matrix_FGSEA.Rdata"))
+  load(paste0(inputpath,cancer_type,"/",cancer_type,"_Full_TopMR_Info_FGSEA_BC_NES_1.Rdata"))
+  load(paste0(inputpath,cancer_type,"/",cancer_type,"_Full_Activity_matrix_FGSEA.Rdata"))
+  table_indices <- read.table(paste0(inputpath,cancer_type,"/",cancer_type,"_INV_Info.csv"),header=FALSE,sep=",")
+  table_indices$V2 <- as.character(as.vector(table_indices$V2))
+  high_index_last <- sum(table_indices$V2=="INV High")
+  low_index_last <- nrow(table_indices)
+  high_indices <- table_indices[table_indices$V2=="INV High",]$V1
+  low_indices <- table_indices[table_indices$V2=="INV Low",]$V1
+
+  amat_to_use <- amat
+  amat_to_use[amat_to_use>0] <- amat_to_use[amat_to_use>0]/max(amat_to_use)
+  amat_to_use[amat_to_use<0] <- amat_to_use[amat_to_use<0]/abs(min(amat_to_use))
+  samples <- dim(amat_to_use)[2]
+
+  #all_mrs_present <- topmr_info[topmr_info$pathway %in% rownames(amat_to_use),]$pathway
+  mrs_available <- rownames(amat_to_use)
+  all_mrs_present <- all_mrs[all_mrs %in% mrs_available]
+  missing_mrs <- setdiff(all_mrs,all_mrs_present)
+
+  #Get the activity matrix for these differential MRs per cancer with the phenotype information
+  new_mr_activity_matrix <- as.matrix(amat_to_use[all_mrs_present,c(high_indices,low_indices)])
+  rownames(new_mr_activity_matrix)
+  colnames(new_mr_activity_matrix) <- NULL
+
+  colcol <- matrix(0,nrow=ncol(new_mr_activity_matrix),ncol=1)
+  high_ids <- c(1:length(high_indices));
+  low_ids <- c((length(high_indices)+1):length(colcol))
+  colcol[high_ids,1] <- "red"
+  colcol[low_ids,1] <- "blue"
+  colnames(colcol) <- "INV Phenotype"
+  hc_high.cols <- hclust(dist(t(new_mr_activity_matrix[,high_ids])),method='ward.D')
+  hc_low.cols <- hclust(dist(t(new_mr_activity_matrix[,low_ids])),method='ward.D')
+  hc.cols <- c(hc_high.cols$order,length(high_ids)+hc_low.cols$order);
+  hc.rows <- hclust(dist(new_mr_activity_matrix),method='ward.D')
+
+  #Make the plot of activity matrix clustered by hot vs cold immune response
+  #=================================================================================================
+  #pdf(paste0(inputpath,cancer_type,"/",cancer_type,"_PRECOG_Activity_Matrix.pdf"),pointsize=9,height=9,width=15)
+  par(bg="white")
+  par(fg="black",col.axis="black",col.main="black",col.lab="black", cex.main=2.0, cex = 2.5)
+  new_mr_activity_matrix[new_mr_activity_matrix <= quantile(new_mr_activity_matrix, 0.05)] <- quantile(new_mr_activity_matrix, 0.05)
+  new_mr_activity_matrix[new_mr_activity_matrix >= quantile(new_mr_activity_matrix, 0.95)] <- quantile(new_mr_activity_matrix, 0.95)
+  heatmap.3(new_mr_activity_matrix[#hc.rows$order,
+                                  all_mrs_present,hc.cols], Rowv=TRUE, Colv=FALSE, col = bluered(100), scale="none", main= paste0("Master Regulator Activity for ",cancer_type," (PRECOG)"),
+            xlab = "TCGA Samples", ylab="Top MRs", dendrogram = "col", key = TRUE, density.info = "none",
+            KeyValueName = "Activity Value", ColSideColors = colcol, ColSideColorsSize=2,
+            margins = c(6,6), useRaster = FALSE, cexRow = 1.5, cexCol = 0.6)
+  #dev.off()
+  
+  missing_mr_matrix <- matrix(0, nrow=length(missing_mrs),ncol=samples)
+  final_activity_matrix <- as.matrix(rbind(new_mr_activity_matrix,missing_mr_matrix))
+  colnames(final_activity_matrix) <- colnames(new_mr_activity_matrix)
+  rownames(final_activity_matrix) <- c(all_mrs_present, missing_mrs)
+  
+  
+  activity_df <- perform_wilcox_test(final_activity_matrix[,high_ids],final_activity_matrix[,low_ids])
+  activity_df <- activity_df[,c(2:ncol(activity_df))]
+  activity_df$Mean1 <- round(activity_df$Mean1,3)
+  activity_df$Mean2 <- round(activity_df$Mean2,3)
+  activity_df$FC_Mean <- round(activity_df$FC_Mean,3)
+  activity_df$Pval <- signif(activity_df$Pval,3)
+  activity_df$Padjust <- signif(activity_df$Padjust,3)
+  activity_df <- activity_df[sort(all_mrs),]
+  write.table(activity_df,file = paste0(inputpath,cancer_type,"/",cancer_type,"_PRECOG_Diff_Activity.csv",row.names=T, col.names=T, quote=F, sep=","))
+  
+  #Get list of present MRs, abset MRs and differential MRs
+  present_mrs[[i]] <- length(all_mrs_present)
+  absent_mrs[[i]] <- length(missing_mrs)
+  differntial_mrs[[i]] <- nrow(activity_df[activity_df$Padjust<0.05,])
+}
+names(present_mrs) <- precog_cancers
+names(absent_mrs) <- precog_cancers
+names(differntial_mrs) <- precog_cancers
