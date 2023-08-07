@@ -454,7 +454,7 @@ for (i in 1:length(precog_cancers))
   activity_df$Pval <- signif(activity_df$Pval,3)
   activity_df$Padjust <- signif(activity_df$Padjust,3)
   activity_df <- activity_df[sort(all_mrs),]
-  write.table(activity_df,file = paste0(inputpath,cancer_type,"/",cancer_type,"_PRECOG_Diff_Activity.csv",row.names=T, col.names=T, quote=F, sep=","))
+  write.table(activity_df,file = paste0(inputpath,cancer_type,"/",cancer_type,"_PRECOG_Diff_Activity.csv"),row.names=T, col.names=T, quote=F, sep=",")
   
   #Get list of present MRs, abset MRs and differential MRs
   present_mrs[[i]] <- length(all_mrs_present)
